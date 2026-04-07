@@ -581,7 +581,7 @@
     <!-- Step 1: Email -->
     <div id="auth-step1">
       <h2>Sign in to Forage</h2>
-      <p>Enter your email and we'll send you a 6-digit code.</p>
+      <p>Enter your email and we'll send you an 8-digit code.</p>
       <input class="auth-input" type="email" id="auth-email" placeholder="you@example.com">
       <div class="auth-error" id="auth-error-1"></div>
       <button class="auth-btn" id="auth-send-btn">Continue</button>
@@ -881,7 +881,7 @@
   // ── Step 2: verify OTP ─────────────────────────────────────
   authVerifyBtn.addEventListener('click', async () => {
     const code = otpInputs.map(i => i.value).join('');
-    if (code.length < 6) { showAuthError(2, 'Please enter the full 6-digit code.'); return; }
+    if (code.length < 6) { showAuthError(2, 'Please enter the full 8-digit code.'); return; }
     clearAuthError(2);
     authVerifyBtn.disabled = true; authVerifyBtn.textContent = 'Verifying…';
 
