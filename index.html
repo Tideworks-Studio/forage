@@ -1,0 +1,1679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forage</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.png">
+  <meta name="theme-color" content="#f3f1eb">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rethink+Sans:ital,wght@0,400;0,500;0,700;1,400;1,700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+
+  <!-- Default favicon (fallback for unsupported browsers) -->
+  <link rel="icon" href="assets/light_favicon.png" type="image/x-icon">
+  
+  <!-- Light mode favicon -->
+  <link rel="icon" href="assets/light_favicon.png" type="image/x-icon" media="(prefers-color-scheme: light)">
+  
+  <!-- Dark mode favicon -->
+  <link rel="icon" href="assets/dark_favicon.png" type="image/x-icon" media="(prefers-color-scheme: dark)">
+
+  <style>
+    :root {
+      --bg:         #f3f1eb;
+      --surface:    #eceae3;
+      --surface2:   #e4e2da;
+      --border:     #d7d6ca;
+      --text:       rgb(63, 58, 51);
+      --text-muted: rgba(63, 58, 51, 0.8);
+      --text-faint: rgba(63, 58, 51, 0.45);
+      --dark:       rgb(42, 38, 32);
+      --font:       "Rethink Sans", sans-serif;
+      --radius:     12px;
+      --radius-sm:  8px;
+      --nav-h:      64px;
+      --ease-out:   cubic-bezier(0.22, 1, 0.36, 1);
+    }
+ 
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: var(--font); font-size: 16px; line-height: 1.6;
+      color: var(--text); background: var(--bg);
+      display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+    }
+    h1,h2,h3,h4,h5,h6,p,figure { margin: 0; }
+    button { font-family: var(--font); cursor: pointer; }
+ 
+    /* ── Nav (no border) ─────────────────────────────────────── */
+    #nav {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; height: var(--nav-h);
+    }
+    #nav-left { display: flex; align-items: center; gap: 12px; font-size: 15px; color: var(--text-muted); }
+    #logo { width: 28px; height: 28px; object-fit: contain; display: block; mix-blend-mode: multiply; }
+    #nav-left .sep { color: var(--text-faint); }
+    .active-tag-badge { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; color: var(--text-muted); }
+    #navDot { width: 8px; height: 8px; border-radius: 50%; background: #dfaa40; flex-shrink: 0; transition: background 0.3s var(--ease-out); }
+    #uploadBtn {
+      font-size: 15px; font-weight: 500; color: var(--text-muted);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 7px 16px;
+      transition: background 0.15s, transform 0.15s var(--ease-out);
+    }
+    #uploadBtn:hover { background: var(--surface2); }
+    #uploadBtn:active { transform: scale(0.97); }
+    #signOutBtn {
+    background: none; border: none; padding: 5px; cursor: pointer;
+    color: var(--text-faint); border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    transition: color 0.15s, background 0.15s;
+}
+#signOutBtn:hover { color: var(--text-muted); background: var(--surface); }
+ 
+    /* ── Layout ──────────────────────────────────────────────── */
+    #body { display: flex; flex: 1; overflow: hidden; }
+ 
+    /* ── Sidebar (no border) ─────────────────────────────────── */
+    #sidebar {
+      width: 220px; flex-shrink: 0; background: var(--bg);
+      padding: 20px 0; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+    .sidebar-label {
+      font-size: 12px; font-weight: 500; color: var(--text-faint);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 0 20px; margin-bottom: 2px;
+    }
+    .sidebar-quick { display: flex; flex-direction: column; }
+    .sidebar-quick-item {
+      padding: 6px 20px; font-size: 15px; color: var(--text-muted);
+      cursor: pointer; transition: background 0.12s, color 0.12s;
+    }
+    .sidebar-quick-item:hover { background: var(--surface); color: var(--text); }
+    .sidebar-quick-item.active { color: var(--text); font-weight: 500; }
+    #tagList { display: flex; flex-direction: column; }
+    .sidebar-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 5px 20px; cursor: pointer; transition: background 0.12s;
+    }
+    .sidebar-item:hover { background: var(--surface); }
+    .sidebar-item.active { background: var(--surface); }
+    .sidebar-item-left { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--text-muted); }
+    .sidebar-item.active .sidebar-item-left { color: var(--text); font-weight: 500; }
+    .sidebar-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .sidebar-item-count { font-size: 12px; color: var(--text-faint); }
+ 
+    /* ── Main ────────────────────────────────────────────────── */
+    #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    #collection-header { padding: 24px 24px 0; }
+    #collection-title {
+      font-family: "IM Fell English", "Times New Roman", serif;
+      font-size: 42px; font-weight: 400; line-height: 1.3;
+      color: var(--text); margin-bottom: 2px;
+    }
+    #collection-desc { font-size: 15px; color: var(--text-muted); }
+    #grid-area { flex: 1; overflow-y: auto; padding: 20px 24px 24px; }
+    #grid { columns: 4; column-gap: 10px; }
+ 
+    .image-card {
+      break-inside: avoid; margin-bottom: 10px;
+      cursor: pointer; border-radius: 6px; overflow: hidden; position: relative;
+      transition: transform 0.25s var(--ease-out), box-shadow 0.2s;
+      animation: cardIn 0.4s var(--ease-out) both;
+    }
+    .image-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,0.13); }
+    .image-card:active { transform: scale(0.98); }
+    .image-card img { display: block; width: 100%; height: auto; }
+ 
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(8px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+ 
+    #empty-state {
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      height: 240px; color: var(--text-faint); font-size: 15px; gap: 6px;
+    }
+    #empty-state.visible { display: flex; animation: cardIn 0.3s var(--ease-out); }
+ 
+    /* ── Shared backdrop ─────────────────────────────────────── */
+    .overlay-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(30, 27, 22, 0.52);
+      backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+      z-index: 100; display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.28s var(--ease-out);
+    }
+    .overlay-backdrop.open { opacity: 1; pointer-events: auto; }
+ 
+    /* ── Upload modal ────────────────────────────────────────── */
+    #upload-modal {
+      background: var(--bg); border-radius: var(--radius);
+      width: 520px; max-width: calc(100vw - 48px); overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.22);
+      transform: translateY(14px) scale(0.97); opacity: 0;
+      transition: transform 0.38s var(--ease-out), opacity 0.3s var(--ease-out);
+    }
+    #upload-backdrop.open #upload-modal { transform: translateY(0) scale(1); opacity: 1; }
+ 
+    #step1 { padding: 28px; display: flex; flex-direction: column; gap: 14px; }
+    #step1.gone { display: none; }
+ 
+    .drop-zone {
+      background: var(--surface); border-radius: var(--radius-sm);
+      padding: 38px 24px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+      cursor: pointer; border: 1.5px dashed transparent;
+      transition: background 0.15s, border-color 0.15s, transform 0.2s var(--ease-out);
+    }
+    .drop-zone:hover { background: var(--surface2); }
+    .drop-zone.dragover { background: var(--surface2); border-color: var(--border); transform: scale(1.01); }
+    .drop-zone-icon { color: var(--text-muted); opacity: 0.65; }
+    .drop-zone-label { font-size: 17px; font-weight: 500; color: var(--text-muted); }
+ 
+    .or-divider { display: flex; align-items: center; gap: 12px; color: var(--text-faint); font-size: 14px; }
+    .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+ 
+    .paste-btn {
+      width: 100%; padding: 14px; background: var(--surface2); border: none;
+      border-radius: var(--radius-sm); font-size: 16px; font-weight: 500; color: var(--text-muted);
+      transition: background 0.15s, color 0.15s, transform 0.15s var(--ease-out);
+    }
+    .paste-btn:hover { background: var(--border); color: var(--text); }
+    .paste-btn:active { transform: scale(0.99); }
+ 
+    #urlField {
+      display: none; font-family: var(--font); font-size: 15px; color: var(--text);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 14px; width: 100%; outline: none;
+      transition: border-color 0.15s; animation: cardIn 0.2s var(--ease-out);
+    }
+    #urlField.visible { display: block; }
+    #urlField:focus { border-color: var(--text-faint); }
+    #urlField::placeholder { color: var(--text-faint); }
+    #urlField.error { border-color: #da4241; }
+    .modal-note { font-size: 13px; color: var(--text-faint); text-align: center; }
+ 
+    #step2 { display: none; flex-direction: column; }
+    #step2.visible { display: flex; animation: cardIn 0.32s var(--ease-out) both; }
+    #step2-inner { display: flex; }
+ 
+    #preview-col {
+      width: 190px; flex-shrink: 0; background: var(--surface);
+      overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 220px;
+    }
+    #preview-col img { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity 0.3s var(--ease-out); }
+ 
+    #form-col { flex: 1; padding: 22px; display: flex; flex-direction: column; gap: 18px; }
+    .form-label { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+ 
+    #notesField {
+      font-family: var(--font); font-size: 14px; color: var(--text);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 10px 12px;
+      resize: vertical; min-height: 88px; outline: none; line-height: 1.5; width: 100%;
+      transition: border-color 0.15s;
+    }
+    #notesField:focus { border-color: var(--text-faint); }
+    #notesField::placeholder { color: var(--text-faint); }
+ 
+    #tag-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 99px; font-size: 13px; color: var(--text-muted);
+      cursor: pointer; user-select: none;
+      transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.15s var(--ease-out);
+    }
+    .tag-pill .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .tag-pill:hover { background: var(--surface2); }
+    .tag-pill:active { transform: scale(0.93); }
+    .tag-pill.selected { background: var(--dark); border-color: var(--dark); color: var(--bg); }
+    #new-tag-input {
+      font-family: var(--font); font-size: 13px; color: var(--text);
+      background: var(--surface); border: 1px dashed var(--border);
+      border-radius: 99px; padding: 4px 10px; outline: none; width: 90px;
+      transition: border-color 0.15s, width 0.2s var(--ease-out);
+    }
+    #new-tag-input:focus { border-color: var(--text-faint); width: 130px; }
+    #new-tag-input::placeholder { color: var(--text-faint); }
+ 
+    #step2-footer { border-top: 1px solid var(--border); padding: 16px 22px; }
+    .btn-upload {
+      width: 100%; padding: 13px; background: var(--dark); color: var(--bg);
+      border: none; border-radius: var(--radius-sm); font-size: 16px; font-weight: 500;
+      transition: opacity 0.15s, transform 0.15s var(--ease-out);
+    }
+    .btn-upload:hover { opacity: 0.88; }
+    .btn-upload:active { transform: scale(0.99); }
+    .btn-upload:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+ 
+    /* ── Image detail modal ───────────────────────────────────── */
+    #detail-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(30, 27, 22, 0.6);
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      z-index: 200; display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.28s var(--ease-out);
+    }
+    #detail-backdrop.open { opacity: 1; pointer-events: auto; }
+ 
+    #detail-modal {
+      background: var(--bg); border-radius: var(--radius);
+      width: min(860px, calc(100vw - 48px)); max-height: calc(100vh - 64px);
+      overflow: hidden; display: flex;
+      box-shadow: 0 28px 72px rgba(0,0,0,0.28);
+      transform: translateY(16px) scale(0.97); opacity: 0;
+      transition: transform 0.4s var(--ease-out), opacity 0.32s var(--ease-out);
+    }
+    #detail-backdrop.open #detail-modal { transform: translateY(0) scale(1); opacity: 1; }
+ 
+    #detail-img-col {
+      flex: 0 0 55%; background: var(--dark); overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 420px;
+    }
+    #detail-img-col img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+      transition: opacity 0.35s var(--ease-out);
+    }
+ 
+    #detail-info-col {
+      flex: 1; padding: 32px 28px; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 28px;
+    }
+ 
+    /* source + date header */
+    #detail-meta { display: flex; flex-direction: column; gap: 4px; }
+    #detail-source {
+      font-size: 13px; color: var(--text-faint);
+      display: flex; align-items: center; gap: 5px;
+    }
+    #detail-source a {
+      color: var(--text-muted); text-decoration: none; font-weight: 500;
+      transition: color 0.12s;
+    }
+    #detail-source a:hover { color: var(--text); }
+    #detail-source svg { opacity: 0.5; flex-shrink: 0; }
+    #detail-date { font-size: 12px; color: var(--text-faint); }
+ 
+    /* notes */
+    #detail-notes-wrap { display: flex; flex-direction: column; gap: 6px; }
+    .detail-section-label { font-size: 13px; font-weight: 500; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+    #detail-notes { font-size: 15px; color: var(--text-muted); line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+    #detail-notes.empty { color: var(--text-faint); font-style: italic; }
+ 
+    /* tags */
+    #detail-tags-wrap { display: flex; flex-direction: column; gap: 8px; }
+    #detail-tags { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .detail-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 99px; font-size: 13px; color: var(--text-muted);
+      transition: background 0.12s;
+    }
+    .detail-tag .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .detail-tag .remove-tag {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 14px; height: 14px; border-radius: 50%;
+      font-size: 10px; line-height: 1; color: var(--text-faint);
+      cursor: pointer; margin-left: 2px;
+      transition: background 0.12s, color 0.12s;
+    }
+    .detail-tag .remove-tag:hover { background: var(--border); color: var(--text); }
+    #detail-tag-input {
+      font-family: var(--font); font-size: 13px; color: var(--text);
+      background: var(--surface); border: 1px dashed var(--border);
+      border-radius: 99px; padding: 4px 10px; outline: none; width: 88px;
+      transition: border-color 0.15s, width 0.2s var(--ease-out);
+    }
+    #detail-tag-input:focus { border-color: var(--text-faint); width: 120px; }
+    #detail-tag-input::placeholder { color: var(--text-faint); }
+ 
+    /* action buttons */
+    #detail-actions { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+    .detail-btn {
+      width: 100%; padding: 11px 16px; border-radius: var(--radius-sm);
+      font-size: 15px; font-weight: 500; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text-muted);
+      transition: background 0.15s, color 0.15s, transform 0.15s var(--ease-out);
+      text-align: center; text-decoration: none; display: block;
+    }
+    .detail-btn:hover { background: var(--surface2); color: var(--text); }
+    .detail-btn:active { transform: scale(0.99); }
+    .detail-btn.danger {
+      background: #2a1010; border-color: #5c1f1f; color: #f87171;
+    }
+    .detail-btn.danger:hover { background: #3a1515; }
+    .detail-btn.download {
+      background: var(--dark); border-color: var(--dark); color: var(--bg);
+    }
+    .detail-btn.download:hover { opacity: 0.88; background: var(--dark); color: var(--bg); }
+ 
+    /* ── Toast ───────────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 28px; left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      z-index: 999; display: inline-flex; align-items: center; gap: 8px;
+      padding: 9px 16px 9px 12px; border-radius: 99px;
+      font-size: 14px; font-weight: 500; font-family: var(--font);
+      white-space: nowrap; pointer-events: none; opacity: 0;
+      transition: opacity 0.25s var(--ease-out), transform 0.35s var(--ease-out);
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.error  { background: #3a1212; color: #f87171; border: 1px solid #7f2020; }
+    #toast.success { background: #0f2b1a; color: #4ade80; border: 1px solid #1a5c33; }
+ 
+    /* ── Scrollbars ──────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+ 
+    /* ── Gear button in nav ──────────────────────────────────── */
+    #nav-right { display: flex; align-items: center; gap: 8px; }
+    #tagSettingsBtn {
+      display: none; /* shown only when a tag is active */
+      background: none; border: none; padding: 5px; cursor: pointer;
+      color: var(--text-faint); border-radius: var(--radius-sm);
+      align-items: center; justify-content: center;
+      transition: color 0.15s, background 0.15s;
+    }
+    #tagSettingsBtn:hover { color: var(--text-muted); background: var(--surface); }
+    #tagSettingsBtn.visible { display: flex; }
+ 
+    /* ── Favorite star on grid cards ─────────────────────────── */
+    .image-card .fav-star {
+      position: absolute; top: 7px; left: 7px;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: rgba(243,241,235,0.88); backdrop-filter: blur(3px);
+      border: none; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 2;
+      opacity: 0; /* hidden by default, show on hover or if favorited */
+      transition: opacity 0.15s, transform 0.15s var(--ease-out);
+      color: var(--text-faint);
+    }
+    .image-card:hover .fav-star { opacity: 1; }
+    .image-card .fav-star.active {
+      opacity: 1;
+      color: #dfaa40;
+    }
+    .image-card .fav-star:active { transform: scale(0.85); }
+    .image-card .fav-star svg { width: 13px; height: 13px; flex-shrink: 0; }
+    .image-card .fav-star.active svg { fill: #dfaa40; stroke: #dfaa40; }
+ 
+    /* ── Favorite star in detail modal ───────────────────────── */
+    #detail-fav-btn {
+      background: none; border: none; padding: 4px; cursor: pointer;
+      color: var(--text-faint);
+      display: flex; align-items: center; gap: 6px;
+      font-size: 13px; font-family: var(--font);
+      transition: color 0.15s;
+      border-radius: var(--radius-sm);
+    }
+    #detail-fav-btn:hover { color: var(--text-muted); }
+    #detail-fav-btn.active { color: #dfaa40; }
+    #detail-fav-btn.active svg { fill: #dfaa40; stroke: #dfaa40; }
+ 
+    /* ── Tag management modal ────────────────────────────────── */
+    #tag-mgmt-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(30, 27, 22, 0.55);
+      backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+      z-index: 300; display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s var(--ease-out);
+    }
+    #tag-mgmt-backdrop.open { opacity: 1; pointer-events: auto; }
+ 
+    #tag-mgmt-modal {
+      background: var(--bg); border-radius: var(--radius);
+      width: 480px; max-width: calc(100vw - 48px);
+      max-height: calc(100vh - 80px); overflow: hidden;
+      display: flex; flex-direction: column;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.22);
+      transform: translateY(12px) scale(0.97); opacity: 0;
+      transition: transform 0.35s var(--ease-out), opacity 0.28s var(--ease-out);
+    }
+    #tag-mgmt-backdrop.open #tag-mgmt-modal { transform: translateY(0) scale(1); opacity: 1; }
+ 
+    #tag-mgmt-header {
+      padding: 20px 24px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+    #tag-mgmt-title { font-size: 17px; font-weight: 500; color: var(--text); }
+    #tag-mgmt-close {
+      background: none; border: none; padding: 4px; cursor: pointer;
+      color: var(--text-faint); border-radius: 4px;
+      transition: color 0.12s, background 0.12s;
+    }
+    #tag-mgmt-close:hover { color: var(--text); background: var(--surface); }
+ 
+    #tag-mgmt-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+ 
+    /* rename field */
+    #tag-rename-wrap { display: flex; flex-direction: column; gap: 8px; }
+    .mgmt-label { font-size: 12px; font-weight: 500; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+    #tag-rename-input {
+      font-family: var(--font); font-size: 15px; color: var(--text);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 9px 12px; outline: none;
+      transition: border-color 0.15s;
+    }
+    #tag-rename-input:focus { border-color: var(--text-faint); }
+ 
+    /* color palette */
+    #tag-color-wrap { display: flex; flex-direction: column; gap: 10px; }
+    #tag-color-palette { display: flex; flex-wrap: wrap; gap: 8px; }
+    .color-swatch {
+      width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
+      border: 2.5px solid transparent;
+      transition: transform 0.15s var(--ease-out), border-color 0.12s;
+      flex-shrink: 0;
+    }
+    .color-swatch:hover { transform: scale(1.18); }
+    .color-swatch.selected { border-color: var(--text); }
+ 
+    /* merge target */
+    #tag-merge-wrap { display: flex; flex-direction: column; gap: 8px; }
+    #tag-merge-select {
+      font-family: var(--font); font-size: 14px; color: var(--text);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 8px 12px; outline: none;
+      cursor: pointer;
+    }
+ 
+    /* action buttons */
+    #tag-mgmt-footer {
+      border-top: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .mgmt-btn {
+      width: 100%; padding: 11px; border-radius: var(--radius-sm);
+      font-size: 15px; font-weight: 500; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text-muted); cursor: pointer;
+      transition: background 0.15s, color 0.15s, transform 0.15s var(--ease-out);
+      font-family: var(--font);
+    }
+    .mgmt-btn:hover { background: var(--surface2); color: var(--text); }
+    .mgmt-btn:active { transform: scale(0.99); }
+    .mgmt-btn.primary { background: var(--dark); border-color: var(--dark); color: var(--bg); }
+    .mgmt-btn.primary:hover { opacity: 0.88; background: var(--dark); color: var(--bg); }
+    .mgmt-btn.danger { background: #2a1010; border-color: #5c1f1f; color: #f87171; }
+    .mgmt-btn.danger:hover { background: #3a1515; }
+
+/* ── user auth modal ──────────────────────────────────────────────── */
+#auth-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(30, 27, 22, 0.85);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  z-index: 1000; display: flex; align-items: center; justify-content: center;
+}
+#auth-modal {
+  background: var(--bg); border-radius: var(--radius);
+  width: 420px; max-width: calc(100vw - 48px);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.28);
+  padding: 36px; display: flex; flex-direction: column; gap: 20px;
+  display: flex;
+  gap: 16px;
+}
+
+#auth-modal h2 {
+  font-family: "IM Fell English", serif; font-weight: 400;
+  font-size: 28px; color: var(--text); margin: 0;
+}
+#auth-modal p {
+  font-size: 14px; color: var(--text-muted); margin: 0; line-height: 1.6;
+}
+.auth-input {
+  font-family: var(--font); font-size: 15px; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 11px 14px; width: 100%;
+  outline: none; transition: border-color 0.15s; box-sizing: border-box;
+}
+.auth-input:focus { border-color: var(--text-faint); }
+.auth-input::placeholder { color: var(--text-faint); }
+.auth-input.error { border-color: #da4241; }
+.auth-btn {
+  width: 100%; padding: 13px; background: var(--dark); color: var(--bg);
+  border: none; border-radius: var(--radius-sm); font-size: 15px;
+  font-weight: 500; font-family: var(--font); cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s var(--ease-out);
+}
+.auth-btn:hover { opacity: 0.88; }
+.auth-btn:active { transform: scale(0.99); }
+.auth-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+.auth-error {
+  font-size: 13px; color: #f87171; display: none;
+}
+.auth-error.visible { display: block; }
+.auth-back {
+  background: none; border: none; font-family: var(--font);
+  font-size: 13px; color: var(--text-faint); cursor: pointer;
+  padding: 0; text-align: left; transition: color 0.12s;
+}
+.auth-back:hover { color: var(--text-muted); }
+.otp-inputs {
+  display: flex; gap: 8px;
+  max-width: 24px;
+}
+.otp-digit {
+  flex: 1; text-align: center; font-size: 22px; font-weight: 500;
+  font-family: var(--font); color: var(--text);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 0; outline: none;
+  transition: border-color 0.15s;
+}
+.otp-digit:focus { border-color: var(--text-faint); }
+</style>
+</head>
+<body>
+ 
+  <div id="auth-backdrop">
+  <div id="auth-modal">
+
+    <!-- Step 1: Email -->
+    <div id="auth-step1">
+      <h2>Sign in to Forage</h2>
+      <p>Enter your email and we'll send you a 6-digit code.</p>
+      <input class="auth-input" type="email" id="auth-email" placeholder="you@example.com">
+      <div class="auth-error" id="auth-error-1"></div>
+      <button class="auth-btn" id="auth-send-btn">Continue</button>
+    </div>
+
+    <!-- Step 2: OTP -->
+    <div id="auth-step2" style="display:none">
+      <h2>Check your email</h2>
+      <p id="auth-otp-desc">We sent an 8-digit code to <strong></strong>. It expires in 10 minutes.</p>
+      <div class="otp-inputs" id="otp-inputs">
+        <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+        <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+        <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+        <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+        <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+        <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+        <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+        <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+      </div>
+      <div class="auth-error" id="auth-error-2"></div>
+      <button class="auth-btn" id="auth-verify-btn">Verify</button>
+      <button class="auth-back" id="auth-back-btn">← Use a different email</button>
+    </div>
+
+    <!-- Step 3: Personal Supabase credentials -->
+    <div id="auth-step3" style="display:none">
+      <h2>Connect your library</h2>
+      <p>Forage stores your images in your own Supabase project. Paste your project URL and anon key below — you can find these in your Supabase dashboard under Settings → API.</p>
+      <input class="auth-input" type="url" id="auth-sb-url" placeholder="https://yourproject.supabase.co">
+      <input class="auth-input" type="text" id="auth-sb-key" placeholder="your anon/public key">
+      <div class="auth-error" id="auth-error-3"></div>
+      <button class="auth-btn" id="auth-save-btn">Open my library</button>
+    </div>
+
+  </div>
+</div>
+
+<nav id="nav">
+  <div id="nav-left">
+    <img id="logo" src="/assets/f-icon.png"/>
+    <span class="sep">/</span>
+    <span class="active-tag-badge">
+      <span id="navDot" style="display:none"></span>
+      <span id="navTagName">All</span>
+    </span>
+  </div>
+  <div id="nav-right">
+  <button id="tagSettingsBtn" title="Tag settings">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+  </svg>
+</button>
+  <button id="uploadBtn">Upload Photo</button>
+  <button id="signOutBtn" title="Sign out">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  </button>
+  </div>
+</nav>
+ 
+<div id="body">
+  <aside id="sidebar">
+    <div>
+      <div class="sidebar-quick">
+        <div class="sidebar-quick-item active" id="quickAll">All Images</div>
+        <div class="sidebar-quick-item" id="quickFav">Favorites</div>
+      </div>
+    </div>
+    <div>
+      <div class="sidebar-label">My Library</div>
+      <div id="tagList"></div>
+    </div>
+  </aside>
+ 
+  <div id="main">
+    <div id="collection-header">
+      <h1 id="collection-title">All</h1>
+      <p id="collection-desc"></p>
+    </div>
+    <div id="grid-area">
+      <div id="empty-state">
+        <span>Nothing here yet</span>
+        <span style="font-size:13px">Upload a photo or paste a URL to get started</span>
+      </div>
+      <div id="grid"></div>
+    </div>
+  </div>
+</div>
+ 
+<!-- Upload modal -->
+<div id="upload-backdrop" class="overlay-backdrop">
+  <div id="upload-modal">
+    <div id="step1">
+      <div class="drop-zone" id="dropZone">
+        <svg class="drop-zone-icon" width="28" height="28" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span class="drop-zone-label">Drag file or browse</span>
+        <input type="file" id="fileInput" multiple accept="image/*" style="display:none">
+      </div>
+      <div class="or-divider">or</div>
+      <button class="paste-btn" id="pasteLinkBtn">Paste image link</button>
+      <input type="text" id="urlField" placeholder="https://…">
+      <p class="modal-note">Only image files are supported (for now)</p>
+    </div>
+ 
+    <div id="step2">
+      <div id="step2-inner">
+        <div id="preview-col"><img id="previewImg" src="" alt=""></div>
+        <div id="form-col">
+          <div>
+            <div class="form-label">What do you like about this image?</div>
+            <textarea id="notesField" placeholder="These are notes which you can view later"></textarea>
+          </div>
+          <div>
+            <div class="form-label">What tags match this image?</div>
+            <div id="tag-pills"></div>
+          </div>
+        </div>
+      </div>
+      <div id="step2-footer">
+        <button class="btn-upload" id="saveBtn">Upload</button>
+      </div>
+    </div>
+  </div>
+</div>
+ 
+<!-- Image detail modal -->
+<div id="detail-backdrop">
+  <div id="detail-modal">
+    <div id="detail-img-col">
+      <img id="detail-img" src="" alt="">
+    </div>
+    <div id="detail-info-col">
+      <div id="detail-meta">
+        <div id="detail-source"></div>
+        <div id="detail-date"></div>
+      </div>
+      <div id="detail-notes-wrap">
+        <div class="detail-section-label">Your Notes</div>
+        <div id="detail-notes"></div>
+      </div>
+      <div id="detail-tags-wrap">
+        <div class="detail-section-label">Tags</div>
+        <div id="detail-tags"></div>
+      </div>
+      <div id="detail-actions">
+        <button id="detail-fav-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          <span id="detail-fav-label">Add to favorites</span>
+        </button>
+        <a id="detail-download" class="detail-btn download" href="#" download>↓ Download image</a>
+        <button id="detail-delete" class="detail-btn danger">✕ Delete image</button>
+      </div>
+    </div>
+  </div>
+</div>
+ 
+<!-- Tag management modal -->
+<div id="tag-mgmt-backdrop">
+  <div id="tag-mgmt-modal">
+    <div id="tag-mgmt-header">
+      <span id="tag-mgmt-title">Tag settings</span>
+      <button id="tag-mgmt-close">✕</button>
+    </div>
+    <div id="tag-mgmt-body">
+      <div id="tag-rename-wrap">
+        <div class="mgmt-label">Rename tag</div>
+        <input type="text" id="tag-rename-input" placeholder="Tag name">
+      </div>
+      <div id="tag-color-wrap">
+        <div class="mgmt-label">Color</div>
+        <div id="tag-color-palette"></div>
+      </div>
+      <div id="tag-merge-wrap">
+        <div class="mgmt-label">Merge into another tag</div>
+        <select id="tag-merge-select">
+          <option value="">— choose a tag —</option>
+        </select>
+      </div>
+    </div>
+    <div id="tag-mgmt-footer">
+      <button class="mgmt-btn primary" id="tag-save-btn">Save changes</button>
+      <button class="mgmt-btn" id="tag-merge-btn">Merge tag</button>
+      <button class="mgmt-btn danger" id="tag-delete-btn">Delete tag</button>
+    </div>
+  </div>
+</div>
+ 
+<!-- Toast -->
+<div id="toast"></div>
+ 
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+  // ── Auth Supabase (your project, holds user accounts + profiles) ──
+  const AUTH_URL = 'https://ecbtdsnjauaztotitfqo.supabase.co';
+  const AUTH_KEY = 'sb_publishable_o6M4Yt9SunEuS2qw5rp3QQ_diM-vSev';
+  const authSupabase = createClient(AUTH_URL, AUTH_KEY);
+
+  // ── User's personal Supabase (holds their images) ──
+  // Will be initialized after login
+  let supabase = null;
+
+  // ── Auth state ─────────────────────────────────────────────
+  const authBackdrop = document.getElementById('auth-backdrop');
+  const authStep1    = document.getElementById('auth-step1');
+  const authStep2    = document.getElementById('auth-step2');
+  const authStep3    = document.getElementById('auth-step3');
+  const authEmail    = document.getElementById('auth-email');
+  const authSendBtn  = document.getElementById('auth-send-btn');
+  const authVerifyBtn= document.getElementById('auth-verify-btn');
+  const authSaveBtn  = document.getElementById('auth-save-btn');
+  const authBackBtn  = document.getElementById('auth-back-btn');
+  const authSbUrl    = document.getElementById('auth-sb-url');
+  const authSbKey    = document.getElementById('auth-sb-key');
+  const otpInputs    = [...document.querySelectorAll('.otp-digit')];
+
+  function showAuthError(step, msg) {
+    const el = document.getElementById(`auth-error-${step}`);
+    el.textContent = msg;
+    el.classList.add('visible');
+  }
+  function clearAuthError(step) {
+    const el = document.getElementById(`auth-error-${step}`);
+    el.textContent = '';
+    el.classList.remove('visible');
+  }
+
+  function goToStep(n) {
+    authStep1.style.display = n === 1 ? 'flex' : 'none';
+    authStep2.style.display = n === 2 ? 'flex' : 'none';
+    authStep3.style.display = n === 3 ? 'flex' : 'none';
+    // flex column on the steps that show
+    if (n === 1) authStep1.style.flexDirection = 'column';
+    if (n === 2) authStep2.style.flexDirection = 'column';
+    if (n === 3) authStep3.style.flexDirection = 'column';
+    [1,2,3].forEach(i => {
+      if (i !== n) clearAuthError(i);
+    });
+  }
+
+  // ── Step 1: send OTP ───────────────────────────────────────
+  authSendBtn.addEventListener('click', async () => {
+    const email = authEmail.value.trim();
+    if (!email) { showAuthError(1, 'Please enter your email.'); return; }
+    clearAuthError(1);
+    authSendBtn.disabled = true; authSendBtn.textContent = 'Sending…';
+
+    const { error } = await authSupabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true }
+    });
+
+    authSendBtn.disabled = false; authSendBtn.textContent = 'Continue';
+
+    if (error) { showAuthError(1, error.message); return; }
+
+    // show email in step 2 description
+    authStep2.querySelector('strong').textContent = email;
+    goToStep(2);
+    otpInputs[0].focus();
+  });
+
+  authEmail.addEventListener('keydown', e => { if (e.key === 'Enter') authSendBtn.click(); });
+
+  // ── OTP input behavior ─────────────────────────────────────
+  otpInputs.forEach((input, i) => {
+    input.addEventListener('input', () => {
+      // only allow digits
+      input.value = input.value.replace(/\D/g, '');
+      if (input.value && i < otpInputs.length - 1) otpInputs[i + 1].focus();
+      // auto-verify when all 6 filled
+      if (otpInputs.every(inp => inp.value)) authVerifyBtn.click();
+    });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !input.value && i > 0) otpInputs[i - 1].focus();
+    });
+    input.addEventListener('paste', e => {
+      e.preventDefault();
+      const pasted = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 8);
+      pasted.split('').forEach((ch, idx) => { if (otpInputs[idx]) otpInputs[idx].value = ch; });
+      const next = Math.min(pasted.length, 5);
+      otpInputs[next].focus();
+      if (pasted.length === 8) authVerifyBtn.click();
+    });
+  });
+
+  // ── Step 2: verify OTP ─────────────────────────────────────
+  authVerifyBtn.addEventListener('click', async () => {
+    const code = otpInputs.map(i => i.value).join('');
+    if (code.length < 6) { showAuthError(2, 'Please enter the full 6-digit code.'); return; }
+    clearAuthError(2);
+    authVerifyBtn.disabled = true; authVerifyBtn.textContent = 'Verifying…';
+
+    const { error } = await authSupabase.auth.verifyOtp({
+      email: authEmail.value.trim(),
+      token: code,
+      type: 'email'
+    });
+
+    authVerifyBtn.disabled = false; authVerifyBtn.textContent = 'Verify';
+
+    if (error) { showAuthError(2, 'Invalid or expired code. Try again.'); return; }
+
+    // verified — now check for saved credentials
+    await loadUserCredentials();
+  });
+
+  authBackBtn.addEventListener('click', () => {
+    otpInputs.forEach(i => i.value = '');
+    goToStep(1);
+  });
+
+  // ── Load credentials after auth ────────────────────────────
+  async function loadUserCredentials() {
+    // check localStorage first (fast path)
+    const cachedUrl = localStorage.getItem('forage_sb_url');
+    const cachedKey = localStorage.getItem('forage_sb_key');
+
+    if (cachedUrl && cachedKey) {
+      initUserSupabase(cachedUrl, cachedKey);
+      return;
+    }
+
+    // fall back to DB
+    const { data, error } = await authSupabase
+      .from('profiles')
+      .select('supabase_url, supabase_key')
+      .single();
+
+    if (!error && data?.supabase_url && data?.supabase_key) {
+      localStorage.setItem('forage_sb_url', data.supabase_url);
+      localStorage.setItem('forage_sb_key', data.supabase_key);
+      initUserSupabase(data.supabase_url, data.supabase_key);
+      return;
+    }
+
+    // no credentials found — ask for them
+    goToStep(3);
+  }
+
+  // ── Step 3: save credentials ───────────────────────────────
+  authSaveBtn.addEventListener('click', async () => {
+    const url = authSbUrl.value.trim();
+    const key = authSbKey.value.trim();
+    if (!url || !key) { showAuthError(3, 'Both fields are required.'); return; }
+    clearAuthError(3);
+    authSaveBtn.disabled = true; authSaveBtn.textContent = 'Saving…';
+
+    // quick sanity check — try to connect before saving
+    try {
+      const testClient = createClient(url, key);
+      const { error } = await testClient.from('images').select('id').limit(1);
+      if (error && error.code !== 'PGRST116') throw new Error(error.message);
+    } catch (err) {
+      showAuthError(3, 'Couldn\'t connect — double-check your URL and key.');
+      authSaveBtn.disabled = false; authSaveBtn.textContent = 'Open my library';
+      return;
+    }
+
+    // save to DB
+    await authSupabase.from('profiles').upsert({
+      id: (await authSupabase.auth.getUser()).data.user.id,
+      supabase_url: url,
+      supabase_key: key
+    });
+
+    // save to localStorage
+    localStorage.setItem('forage_sb_url', url);
+    localStorage.setItem('forage_sb_key', key);
+
+    authSaveBtn.disabled = false; authSaveBtn.textContent = 'Open my library';
+    initUserSupabase(url, key);
+  });
+
+  // ── Initialize user's Supabase and open app ────────────────
+  function initUserSupabase(url, key) {
+    supabase = createClient(url, key);
+    authBackdrop.style.display = 'none';
+    loadImages();
+  }
+
+  // ── Check for existing session on load ────────────────────
+  async function checkSession() {
+    const { data: { session } } = await authSupabase.auth.getSession();
+    if (session) {
+      await loadUserCredentials();
+    } else {
+      goToStep(1);
+    }
+  }
+
+  // ── Add sign out somewhere (optional, wire to a button) ───
+  async function signOut() {
+    await authSupabase.auth.signOut();
+    localStorage.removeItem('forage_sb_url');
+    localStorage.removeItem('forage_sb_key');
+    supabase = null;
+    authBackdrop.style.display = 'flex';
+    goToStep(1);
+    
+  }
+
+document.getElementById('signOutBtn').addEventListener('click', signOut);
+
+  // ── Toast ──────────────────────────────────────────────────
+  let toastTimer;
+  function showToast(message, type = 'error') {
+    const el = document.getElementById('toast');
+    el.className = '';
+    el.textContent = (type === 'error' ? '⚠ ' : '✓ ') + message;
+    el.classList.add(type, 'show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
+  }
+ 
+  // ── DOM refs ───────────────────────────────────────────────
+  const uploadBtn      = document.getElementById('uploadBtn');
+  const uploadBackdrop = document.getElementById('upload-backdrop');
+  const dropZone       = document.getElementById('dropZone');
+  const fileInput      = document.getElementById('fileInput');
+  const pasteLinkBtn   = document.getElementById('pasteLinkBtn');
+  const urlField       = document.getElementById('urlField');
+  const step1          = document.getElementById('step1');
+  const step2          = document.getElementById('step2');
+  const previewImg     = document.getElementById('previewImg');
+  const notesField     = document.getElementById('notesField');
+  const tagPillsEl     = document.getElementById('tag-pills');
+  const saveBtn        = document.getElementById('saveBtn');
+  const grid           = document.getElementById('grid');
+  const tagList        = document.getElementById('tagList');
+  const navDot         = document.getElementById('navDot');
+  const navTagName     = document.getElementById('navTagName');
+  const collTitle      = document.getElementById('collection-title');
+  const quickAll        = document.getElementById('quickAll');
+  const quickFav        = document.getElementById('quickFav');
+  const emptyState      = document.getElementById('empty-state');
+  const tagSettingsBtn  = document.getElementById('tagSettingsBtn');
+  const detailFavBtn    = document.getElementById('detail-fav-btn');
+  const detailFavLabel  = document.getElementById('detail-fav-label');
+  // tag mgmt modal
+  const tagMgmtBackdrop = document.getElementById('tag-mgmt-backdrop');
+  const tagMgmtTitle    = document.getElementById('tag-mgmt-title');
+  const tagRenameInput  = document.getElementById('tag-rename-input');
+  const tagColorPalette = document.getElementById('tag-color-palette');
+  const tagMergeSelect  = document.getElementById('tag-merge-select');
+  const tagSaveBtn      = document.getElementById('tag-save-btn');
+  const tagMergeBtn     = document.getElementById('tag-merge-btn');
+  const tagDeleteBtn    = document.getElementById('tag-delete-btn');
+  const tagMgmtClose    = document.getElementById('tag-mgmt-close');
+ 
+  // detail modal
+  const detailBackdrop  = document.getElementById('detail-backdrop');
+  const detailImg       = document.getElementById('detail-img');
+  const detailSource    = document.getElementById('detail-source');
+  const detailDate      = document.getElementById('detail-date');
+  const detailNotes     = document.getElementById('detail-notes');
+  const detailTags      = document.getElementById('detail-tags');
+  const detailDownload  = document.getElementById('detail-download');
+  const detailDelete    = document.getElementById('detail-delete');
+ 
+  let imagesData    = [];
+  let activeTag     = 'all';
+  let activeTagColor = '';
+  let pendingFile   = null;
+  let pendingIsURL  = false;
+  let selectedTags  = new Set();
+  let activeImageId = null;
+ 
+  // Tag color overrides stored in localStorage
+  // format: { tagName: hexColor }
+  const TAG_COLOR_OVERRIDES_KEY = 'forage_tag_colors';
+  function getTagColorOverrides() {
+    try { return JSON.parse(localStorage.getItem(TAG_COLOR_OVERRIDES_KEY) || '{}'); } catch { return {}; }
+  }
+  function saveTagColorOverride(tag, color) {
+    const overrides = getTagColorOverrides();
+    overrides[tag] = color;
+    localStorage.setItem(TAG_COLOR_OVERRIDES_KEY, JSON.stringify(overrides));
+  }
+  function renameTagColorOverride(oldTag, newTag) {
+    const overrides = getTagColorOverrides();
+    if (overrides[oldTag]) { overrides[newTag] = overrides[oldTag]; delete overrides[oldTag]; }
+    localStorage.setItem(TAG_COLOR_OVERRIDES_KEY, JSON.stringify(overrides));
+  }
+  function deleteTagColorOverride(tag) {
+    const overrides = getTagColorOverrides();
+    delete overrides[tag];
+    localStorage.setItem(TAG_COLOR_OVERRIDES_KEY, JSON.stringify(overrides));
+  }
+ 
+  // ── Tag colors ─────────────────────────────────────────────
+  const TAG_COLORS = [
+    '#3e7cde','#41df75','#dfaa40','#db43b7',
+    '#d97c40','#da4241','#5d43de','#a4dbaa',
+    '#b987d2','#323232','#328055','#806832',
+    '#803255','#946022','#bbbbbb'
+  ];
+  const tagColorMap = {};
+  let colorIdx = 0;
+  function colorFor(tag) {
+    const overrides = getTagColorOverrides();
+    if (overrides[tag]) { tagColorMap[tag] = overrides[tag]; return overrides[tag]; }
+    if (!tagColorMap[tag]) {
+      tagColorMap[tag] = TAG_COLORS[colorIdx % TAG_COLORS.length];
+      colorIdx++;
+    }
+    return tagColorMap[tag];
+  }
+ 
+  // ── Image helpers ──────────────────────────────────────────
+  function imgToDataURL(img, maxWidth = 600) {
+    const scale = Math.min(maxWidth / img.width, 1);
+    const c = document.createElement('canvas');
+    c.width = img.width * scale; c.height = img.height * scale;
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/webp', 0.85);
+  }
+  function loadImgFromFile(file) {
+    return new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => res(img); img.onerror = rej; img.src = e.target.result;
+      };
+      reader.onerror = rej; reader.readAsDataURL(file);
+    });
+  }
+  function loadImgFromURL(url) {
+    return new Promise((res, rej) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => res(img); img.onerror = rej; img.src = url;
+    });
+  }
+ 
+  // ── Upload modal ───────────────────────────────────────────
+  function openUpload() { uploadBackdrop.classList.add('open'); showStep1(); }
+  function closeUpload() {
+    uploadBackdrop.classList.remove('open');
+    setTimeout(resetModal, 320);
+  }
+  function resetModal() {
+    showStep1(); selectedTags.clear(); notesField.value = '';
+    urlField.value = ''; urlField.classList.remove('visible', 'error');
+    pendingFile = null; pendingIsURL = false;
+  }
+  function showStep1() {
+    step1.classList.remove('gone');
+    step2.classList.remove('visible'); step2.style.display = 'none';
+  }
+  function showStep2(displaySrc) {
+    previewImg.style.opacity = '0'; previewImg.src = displaySrc;
+    previewImg.onload = () => { previewImg.style.opacity = '1'; };
+    renderTagPills();
+    step1.classList.add('gone');
+    step2.style.display = 'flex';
+    requestAnimationFrame(() => step2.classList.add('visible'));
+  }
+ 
+  // ── Tag pills (upload modal) ───────────────────────────────
+  function renderTagPills() {
+    tagPillsEl.innerHTML = '';
+    const allTags = new Set();
+    imagesData.forEach(img => img.tags.forEach(t => allTags.add(t)));
+    allTags.forEach(tag => {
+      const color = colorFor(tag);
+      const pill = document.createElement('div');
+      pill.className = 'tag-pill' + (selectedTags.has(tag) ? ' selected' : '');
+      pill.innerHTML = `<span class="dot" style="background:${color}"></span>${tag}`;
+      pill.addEventListener('click', () => {
+        selectedTags.has(tag) ? selectedTags.delete(tag) : selectedTags.add(tag);
+        pill.classList.toggle('selected');
+      });
+      tagPillsEl.appendChild(pill);
+    });
+    const input = document.createElement('input');
+    input.type = 'text'; input.id = 'new-tag-input'; input.placeholder = '+ new tag';
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && input.value.trim()) {
+        e.preventDefault();
+        const typed = input.value.trim();
+        // Case-insensitive dedup: if tag already exists under any casing, skip
+        const exists = [...selectedTags].some(s => s.toLowerCase() === typed.toLowerCase());
+        if (exists) { input.value = ''; return; }
+        const t = typed;
+        selectedTags.add(t);
+        colorFor(t);
+        input.value = '';
+        const color = colorFor(t);
+        const pill = document.createElement('div');
+        pill.className = 'tag-pill selected';
+        pill.innerHTML = `<span class="dot" style="background:${color}"></span>${t}`;
+        pill.addEventListener('click', () => {
+          selectedTags.delete(t);
+          pill.remove();
+        });
+        tagPillsEl.insertBefore(pill, input);
+      }
+    });
+    tagPillsEl.appendChild(input);
+  }
+ 
+  // ── Drag & drop / file pick ────────────────────────────────
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', async e => {
+    e.preventDefault(); dropZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) await handleFile(file);
+  });
+  fileInput.addEventListener('change', async () => {
+    if (fileInput.files[0]) await handleFile(fileInput.files[0]);
+  });
+  async function handleFile(file) {
+    pendingFile = file; pendingIsURL = false;
+    const img = await loadImgFromFile(file);
+    showStep2(imgToDataURL(img));
+  }
+ 
+  // ── URL paste ──────────────────────────────────────────────
+  pasteLinkBtn.addEventListener('click', () => { urlField.classList.add('visible'); urlField.focus(); });
+  urlField.addEventListener('keydown', async e => {
+    if (e.key !== 'Enter') return;
+    const url = urlField.value.trim(); if (!url) return;
+    pendingFile = url; pendingIsURL = true;
+    try {
+      await loadImgFromURL(url);
+      showStep2(url);
+    } catch {
+      urlField.classList.add('error');
+      setTimeout(() => urlField.classList.remove('error'), 900);
+    }
+  });
+ 
+  // ── Save ───────────────────────────────────────────────────
+  saveBtn.addEventListener('click', async () => {
+    if (!pendingFile) return;
+    saveBtn.disabled = true; saveBtn.textContent = 'Uploading…';
+    const tags  = (() => {
+      // also grab anything typed but not confirmed with Enter
+      const liveInput = document.getElementById('new-tag-input');
+      if (liveInput && liveInput.value.trim()) {
+        selectedTags.add(liveInput.value.trim());
+      }
+      return selectedTags.size > 0 ? [...selectedTags] : ['Unlabeled'];
+    })();
+    const notes = notesField.value.trim();
+    try {
+      let thumbnail, url, source_url = '';
+      if (pendingIsURL) {
+        url = pendingFile; source_url = pendingFile;
+        const img = await loadImgFromURL(url);
+        thumbnail = imgToDataURL(img);
+        const { error } = await supabase.from('images').insert([{ url, thumbnail, source_url, tags, notes }]);
+        if (error) throw new Error(`DB insert failed: ${error.message}`);
+      } else {
+        const file = pendingFile;
+        const fileName = `${Date.now()}-${file.name}`;
+        const { error: uploadError } = await supabase.storage.from('images').upload(fileName, file);
+        if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
+        const { data: publicUrlData } = supabase.storage.from('images').getPublicUrl(fileName);
+        url = publicUrlData.publicUrl;
+        thumbnail = imgToDataURL(await loadImgFromFile(file));
+        const { error: insertError } = await supabase.from('images').insert([{ url, thumbnail, source_url, tags, notes }]);
+        if (insertError) throw new Error(`DB insert failed: ${insertError.message}`);
+      }
+      showToast('Image uploaded', 'success');
+      closeUpload(); loadImages();
+    } catch (err) {
+      console.error('Save error', err);
+      showToast(err.message || 'Something went wrong', 'error');
+    }
+    saveBtn.disabled = false; saveBtn.textContent = 'Upload';
+  });
+ 
+  // ── Load / render ──────────────────────────────────────────
+  async function loadImages() {
+    const { data, error } = await supabase.from('images').select('*').order('created_at', { ascending: false });
+    if (error) return console.error(error);
+    imagesData = data;
+    updateSidebar(); renderGrid();
+  }
+ 
+  function updateSidebar() {
+    const tagsSet = new Set();
+    imagesData.forEach(img => img.tags.forEach(t => tagsSet.add(t)));
+    tagList.innerHTML = '';
+    tagsSet.forEach(tag => {
+      const color = colorFor(tag);
+      const count = imagesData.filter(img => img.tags.includes(tag)).length;
+      const item = document.createElement('div');
+      item.className = 'sidebar-item' + (activeTag === tag ? ' active' : '');
+      item.dataset.tag = tag;
+      item.innerHTML = `
+        <div class="sidebar-item-left">
+          <span class="dot" style="background:${color}"></span>
+          <span>${tag}</span>
+        </div>
+        <span class="sidebar-item-count">${count}</span>`;
+      item.addEventListener('click', () => setTag(tag, color));
+      tagList.appendChild(item);
+    });
+    quickAll.classList.toggle('active', activeTag === 'all');
+  }
+ 
+  function setTag(tag, color) {
+    activeTag = tag;
+    activeTagColor = color || '';
+    navTagName.textContent = tag === 'all' || tag === '__favorites__' ? (tag === '__favorites__' ? 'Favorites' : 'All') : tag;
+    navDot.style.display = (tag === 'all' || tag === '__favorites__') ? 'none' : 'inline-block';
+    if (tag !== 'all' && tag !== '__favorites__') navDot.style.background = color;
+    collTitle.textContent = tag === 'all' ? 'All' : tag === '__favorites__' ? 'Favorites' : tag;
+    document.querySelectorAll('.sidebar-item').forEach(el =>
+      el.classList.toggle('active', el.dataset.tag === tag));
+    quickAll.classList.toggle('active', tag === 'all');
+    quickFav.classList.toggle('active', tag === '__favorites__');
+    // show gear only for real tags
+    tagSettingsBtn.classList.toggle('visible', tag !== 'all' && tag !== '__favorites__');
+    renderGrid();
+  }
+ 
+  function renderGrid() {
+    grid.innerHTML = '';
+    const filtered = activeTag === 'all'
+      ? imagesData
+      : activeTag === '__favorites__'
+        ? imagesData.filter(img => img.favorited)
+        : imagesData.filter(img => img.tags.includes(activeTag));
+    emptyState.classList.toggle('visible', filtered.length === 0);
+    filtered.forEach((img, i) => {
+      const div = document.createElement('div');
+      div.className = 'image-card';
+      div.style.animationDelay = `${Math.min(i * 25, 180)}ms`;
+      div.innerHTML = `
+        <img src="${img.thumbnail || img.url}" alt="" loading="lazy">
+        <button class="fav-star ${img.favorited ? 'active' : ''}" data-id="${img.id}" title="${img.favorited ? 'Remove from favorites' : 'Add to favorites'}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        </button>`;
+      // fav star toggle (stop propagation so it doesn't open detail)
+      div.querySelector('.fav-star').addEventListener('click', async e => {
+        e.stopPropagation();
+        const newFav = !img.favorited;
+        const { error } = await supabase.from('images').update({ favorited: newFav }).eq('id', img.id);
+        if (error) { showToast('Could not update favorite', 'error'); return; }
+        img.favorited = newFav;
+        const star = div.querySelector('.fav-star');
+        star.classList.toggle('active', newFav);
+        star.title = newFav ? 'Remove from favorites' : 'Add to favorites';
+        // if viewing favorites, re-render
+        if (activeTag === '__favorites__') renderGrid();
+      });
+      div.addEventListener('click', () => openDetail(img));
+      grid.appendChild(div);
+    });
+  }
+ 
+  // ── Detail modal ───────────────────────────────────────────
+  function openDetail(img) {
+    activeImageId = img.id;
+ 
+    // image
+    detailImg.style.opacity = '0';
+    detailImg.src = img.url || img.thumbnail;
+    detailImg.onload = () => { detailImg.style.opacity = '1'; };
+ 
+    // source
+    detailSource.innerHTML = '';
+    if (img.source_url) {
+      let domain = '';
+      try { domain = new URL(img.source_url).hostname.replace('www.', ''); } catch {}
+      detailSource.innerHTML = `via <a href="${img.source_url}" target="_blank" rel="noopener">${domain}
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+        </svg></a>`;
+    }
+ 
+    // date
+    if (img.created_at) {
+      const d = new Date(img.created_at);
+      detailDate.textContent = `Added ${d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+    } else {
+      detailDate.textContent = '';
+    }
+ 
+    // notes
+    if (img.notes && img.notes.trim()) {
+      detailNotes.textContent = img.notes;
+      detailNotes.classList.remove('empty');
+    } else {
+      detailNotes.textContent = 'No notes yet.';
+      detailNotes.classList.add('empty');
+    }
+ 
+    // favorite button
+    const isFav = !!img.favorited;
+    detailFavBtn.classList.toggle('active', isFav);
+    detailFavLabel.textContent = isFav ? 'Remove from favorites' : 'Add to favorites';
+ 
+    // tags
+    renderDetailTags(img.tags || []);
+ 
+    // download — store src on element, handled via click listener
+    detailDownload.dataset.src = img.url || img.thumbnail;
+    detailDownload.dataset.filename = `forage-${img.id || Date.now()}.jpg`;
+ 
+    detailBackdrop.classList.add('open');
+  }
+ 
+  // ── Detail tag editing ────────────────────────────────────
+  function renderDetailTags(tags) {
+    detailTags.innerHTML = '';
+    tags.forEach(tag => {
+      const color = colorFor(tag);
+      const el = document.createElement('span');
+      el.className = 'detail-tag';
+      el.innerHTML = `<span class="dot" style="background:${color}"></span>${tag}<span class="remove-tag" title="Remove tag">✕</span>`;
+      el.querySelector('.remove-tag').addEventListener('click', async () => {
+        const newTags = tags.filter(t => t !== tag);
+        const { error } = await supabase.from('images').update({ tags: newTags }).eq('id', activeImageId);
+        if (error) { showToast('Could not remove tag', 'error'); return; }
+        // update local data
+        const img = imagesData.find(i => i.id === activeImageId);
+        if (img) img.tags = newTags;
+        renderDetailTags(newTags);
+        updateSidebar();
+      });
+      detailTags.appendChild(el);
+    });
+ 
+    // new tag input
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'detail-tag-input';
+    input.placeholder = '+ add tag';
+    input.addEventListener('keydown', async e => {
+      if (e.key !== 'Enter') return;
+      const val = input.value.trim();
+      if (!val || tags.some(t => t.toLowerCase() === val.toLowerCase())) { input.value = ''; return; }
+      const newTags = [...tags, val];
+      const { error } = await supabase.from('images').update({ tags: newTags }).eq('id', activeImageId);
+      if (error) { showToast('Could not add tag', 'error'); return; }
+      colorFor(val);
+      const img = imagesData.find(i => i.id === activeImageId);
+      if (img) img.tags = newTags;
+      renderDetailTags(newTags);
+      updateSidebar();
+    });
+    detailTags.appendChild(input);
+    // keep focus after re-render if user was typing
+    input.focus();
+  }
+ 
+  function closeDetail() {
+    detailBackdrop.classList.remove('open');
+    detailDelete.disabled = false;
+    detailDelete.textContent = '✕ Delete image';
+    setTimeout(() => { detailImg.src = ''; activeImageId = null; }, 380);
+  }
+ 
+  detailBackdrop.addEventListener('click', e => { if (e.target === detailBackdrop) closeDetail(); });
+ 
+  // ── Download: fetch as blob to force save dialog ──────────────
+  detailDownload.addEventListener('click', async e => {
+    e.preventDefault();
+    const src      = detailDownload.dataset.src;
+    const filename = detailDownload.dataset.filename || 'forage-image.jpg';
+    if (!src) return;
+ 
+    // If it's a data URL (local thumbnail), download directly
+    if (src.startsWith('data:')) {
+      const a = document.createElement('a');
+      a.href = src; a.download = filename;
+      a.click(); return;
+    }
+ 
+    // Otherwise fetch and convert to blob
+    try {
+      detailDownload.textContent = '↓ Downloading…';
+      const res = await fetch(src);
+      if (!res.ok) throw new Error('Fetch failed');
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download error', err);
+      showToast('Download failed — try right-clicking the image instead', 'error');
+    } finally {
+      detailDownload.textContent = '↓ Download image';
+    }
+  });
+ 
+  detailDelete.addEventListener('click', async () => {
+    if (!activeImageId) return;
+    detailDelete.disabled = true;
+    detailDelete.textContent = 'Deleting…';
+ 
+    const img = imagesData.find(i => i.id === activeImageId);
+ 
+    // Attempt to remove from Storage if it looks like a Storage URL
+    if (img && img.url) {
+      try {
+        const storageMarker = '/storage/v1/object/public/images/';
+        const idx = img.url.indexOf(storageMarker);
+        if (idx !== -1) {
+          const filePath = img.url.slice(idx + storageMarker.length);
+          const { error: storageError } = await supabase.storage
+            .from('images')
+            .remove([filePath]);
+          if (storageError) console.warn('Storage delete failed:', storageError.message);
+        }
+      } catch (e) { console.warn('Storage delete error:', e); }
+    }
+ 
+    // Always delete the DB row
+    const { error } = await supabase.from('images').delete().eq('id', activeImageId);
+    if (error) {
+      showToast('Delete failed: ' + error.message, 'error');
+      detailDelete.disabled = false;
+      detailDelete.textContent = '✕ Delete image';
+    } else {
+      showToast('Image deleted', 'success');
+      closeDetail();
+      loadImages();
+    }
+  });
+ 
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeDetail(); closeUpload(); closeTagMgmt(); }
+  });
+ 
+  // ── Favorite button in detail modal ──────────────────────────
+  detailFavBtn.addEventListener('click', async () => {
+    if (!activeImageId) return;
+    const img = imagesData.find(i => i.id === activeImageId);
+    if (!img) return;
+    const newFav = !img.favorited;
+    const { error } = await supabase.from('images').update({ favorited: newFav }).eq('id', activeImageId);
+    if (error) { showToast('Could not update favorite', 'error'); return; }
+    img.favorited = newFav;
+    detailFavBtn.classList.toggle('active', newFav);
+    detailFavLabel.textContent = newFav ? 'Remove from favorites' : 'Add to favorites';
+    renderGrid();
+  });
+ 
+  // ── Tag management modal ───────────────────────────────────────
+  const PALETTE = [
+    '#3e7cde','#41df75','#dfaa40','#db43b7','#d97c40',
+    '#da4241','#5d43de','#a4dbaa','#b987d2','#323232',
+    '#328055','#806832','#803255','#946022','#bbbbbb'
+  ];
+  let mgmtTag = null;
+  let mgmtSelectedColor = null;
+ 
+  function openTagMgmt(tag) {
+    mgmtTag = tag;
+    mgmtSelectedColor = colorFor(tag);
+    tagMgmtTitle.textContent = `"${tag}"`;
+    tagRenameInput.value = tag;
+ 
+    // build color palette
+    tagColorPalette.innerHTML = '';
+    PALETTE.forEach(hex => {
+      const sw = document.createElement('div');
+      sw.className = 'color-swatch' + (hex === mgmtSelectedColor ? ' selected' : '');
+      sw.style.background = hex;
+      sw.addEventListener('click', () => {
+        mgmtSelectedColor = hex;
+        tagColorPalette.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+        sw.classList.add('selected');
+      });
+      tagColorPalette.appendChild(sw);
+    });
+ 
+    // build merge dropdown (all tags except current)
+    tagMergeSelect.innerHTML = '<option value="">— choose a tag —</option>';
+    const allTags = new Set();
+    imagesData.forEach(img => img.tags.forEach(t => allTags.add(t)));
+    allTags.forEach(t => {
+      if (t === tag) return;
+      const opt = document.createElement('option');
+      opt.value = t; opt.textContent = t;
+      tagMergeSelect.appendChild(opt);
+    });
+ 
+    tagMgmtBackdrop.classList.add('open');
+  }
+ 
+  function closeTagMgmt() { tagMgmtBackdrop.classList.remove('open'); }
+ 
+  tagMgmtClose.addEventListener('click', closeTagMgmt);
+  tagMgmtBackdrop.addEventListener('click', e => { if (e.target === tagMgmtBackdrop) closeTagMgmt(); });
+  tagSettingsBtn.addEventListener('click', () => {
+    if (activeTag && activeTag !== 'all' && activeTag !== '__favorites__') openTagMgmt(activeTag);
+  });
+ 
+  // Save: rename + recolor
+  tagSaveBtn.addEventListener('click', async () => {
+    const newName = tagRenameInput.value.trim();
+    if (!newName) return;
+    tagSaveBtn.disabled = true; tagSaveBtn.textContent = 'Saving…';
+ 
+    // update color in localStorage
+    if (mgmtSelectedColor) saveTagColorOverride(newName, mgmtSelectedColor);
+ 
+    // if renamed, update all images that have this tag
+    if (newName !== mgmtTag) {
+      const affected = imagesData.filter(img => img.tags.includes(mgmtTag));
+      for (const img of affected) {
+        const newTags = img.tags.map(t => t === mgmtTag ? newName : t);
+        await supabase.from('images').update({ tags: newTags }).eq('id', img.id);
+        img.tags = newTags;
+      }
+      if (newName !== mgmtTag) renameTagColorOverride(mgmtTag, newName);
+      const wasActive = activeTag === mgmtTag;
+      mgmtTag = newName;
+      if (wasActive) setTag(newName, mgmtSelectedColor);
+    } else {
+      // just recolor — update map and sidebar
+      tagColorMap[mgmtTag] = mgmtSelectedColor;
+      if (activeTag === mgmtTag) navDot.style.background = mgmtSelectedColor;
+    }
+ 
+    tagSaveBtn.disabled = false; tagSaveBtn.textContent = 'Save changes';
+    closeTagMgmt();
+    updateSidebar(); renderGrid();
+    showToast('Tag updated', 'success');
+  });
+ 
+  // Merge
+  tagMergeBtn.addEventListener('click', async () => {
+    const target = tagMergeSelect.value;
+    if (!target) { showToast('Choose a tag to merge into', 'error'); return; }
+    tagMergeBtn.disabled = true; tagMergeBtn.textContent = 'Merging…';
+    const affected = imagesData.filter(img => img.tags.includes(mgmtTag));
+    for (const img of affected) {
+      const newTags = [...new Set(img.tags.map(t => t === mgmtTag ? target : t))];
+      await supabase.from('images').update({ tags: newTags }).eq('id', img.id);
+      img.tags = newTags;
+    }
+    deleteTagColorOverride(mgmtTag);
+    if (activeTag === mgmtTag) setTag('all', '');
+    tagMergeBtn.disabled = false; tagMergeBtn.textContent = 'Merge tag';
+    closeTagMgmt();
+    updateSidebar(); renderGrid();
+    showToast(`Merged into "${target}"`, 'success');
+  });
+ 
+  // Delete tag
+  tagDeleteBtn.addEventListener('click', async () => {
+    if (!confirm(`Remove the tag "${mgmtTag}" from all images? Images won't be deleted.`)) return;
+    tagDeleteBtn.disabled = true; tagDeleteBtn.textContent = 'Deleting…';
+    const affected = imagesData.filter(img => img.tags.includes(mgmtTag));
+    for (const img of affected) {
+      const newTags = img.tags.filter(t => t !== mgmtTag);
+      await supabase.from('images').update({ tags: newTags }).eq('id', img.id);
+      img.tags = newTags;
+    }
+    deleteTagColorOverride(mgmtTag);
+    if (activeTag === mgmtTag) setTag('all', '');
+    tagDeleteBtn.disabled = false; tagDeleteBtn.textContent = 'Delete tag';
+    closeTagMgmt();
+    updateSidebar(); renderGrid();
+    showToast(`Tag "${mgmtTag}" deleted`, 'success');
+  });
+ 
+  // ── Init ───────────────────────────────────────────────────
+  uploadBtn.addEventListener('click', openUpload);
+  uploadBackdrop.addEventListener('click', e => { if (e.target === uploadBackdrop) closeUpload(); });
+  quickAll.addEventListener('click', () => setTag('all', ''));
+  quickFav.addEventListener('click', () => setTag('__favorites__', ''));
+ 
+  window.addEventListener('DOMContentLoaded', checkSession);
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+
+</body>
+</html>

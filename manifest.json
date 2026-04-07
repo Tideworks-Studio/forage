@@ -1,0 +1,11 @@
+{
+  "name": "Forage",
+  "short_name": "Forage",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#f5f5f5",
+  "theme_color": "#4CAF50",
+  "icons": [
+    { "src": "icon_dark.png", "sizes": "800x800", "type": "image/png" }
+  ]
+}
