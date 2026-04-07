@@ -1,11 +1,28 @@
 {
-  "name": "Forage",
-  "short_name": "Forage",
-  "start_url": "/index.html",
-  "display": "standalone",
-  "background_color": "#f5f5f5",
-  "theme_color": "#4CAF50",
-  "icons": [
-    { "src": "icon_dark.png", "sizes": "800x800", "type": "image/png" }
-  ]
+  "manifest_version": 3,
+  "name": "Forage Image Saver",
+  "description": "Save images to your Forage library",
+  "version": "1.0",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": [
+    "activeTab",
+    "contextMenus",
+    "storage"
+  ],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  }
 }
