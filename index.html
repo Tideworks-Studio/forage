@@ -520,8 +520,12 @@
   width: 420px; max-width: calc(100vw - 48px);
   box-shadow: 0 24px 64px rgba(0,0,0,0.28);
   padding: 36px; display: flex; flex-direction: column; gap: 20px;
+}
+
+#auth-step1, #auth-step2, #auth-step3 {
   display: flex;
-  gap: 16px;
+  flex-direction: column;
+  gap: 14px;
 }
 
 #auth-modal h2 {
@@ -559,9 +563,9 @@
   padding: 0; text-align: left; transition: color 0.12s;
 }
 .auth-back:hover { color: var(--text-muted); }
+
 .otp-inputs {
   display: flex; gap: 8px;
-  max-width: 24px;
 }
 .otp-digit {
   flex: 1; text-align: center; font-size: 22px; font-weight: 500;
@@ -569,7 +573,9 @@
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 12px 0; outline: none;
   transition: border-color 0.15s;
+  min-width: 0;
 }
+
 .otp-digit:focus { border-color: var(--text-faint); }
 </style>
 </head>
@@ -581,10 +587,11 @@
     <!-- Step 1: Email -->
     <div id="auth-step1">
       <h2>Sign in to Forage</h2>
-      <p>Enter your email and we'll send you an 8-digit code.</p>
+      <p>Enter your email and we'll send you a 6-digit code.</p>
       <input class="auth-input" type="email" id="auth-email" placeholder="you@example.com">
       <div class="auth-error" id="auth-error-1"></div>
       <button class="auth-btn" id="auth-send-btn">Continue</button>
+      
     </div>
 
     <!-- Step 2: OTP -->
@@ -881,7 +888,7 @@
   // ── Step 2: verify OTP ─────────────────────────────────────
   authVerifyBtn.addEventListener('click', async () => {
     const code = otpInputs.map(i => i.value).join('');
-    if (code.length < 6) { showAuthError(2, 'Please enter the full 8-digit code.'); return; }
+    if (code.length < 6) { showAuthError(2, 'Please enter the full 6-digit code.'); return; }
     clearAuthError(2);
     authVerifyBtn.disabled = true; authVerifyBtn.textContent = 'Verifying…';
 
