@@ -376,14 +376,22 @@
     /* ── Gear button in nav ──────────────────────────────────── */
     #nav-right { display: flex; align-items: center; gap: 8px; }
     #tagSettingsBtn {
-      display: none; /* shown only when a tag is active */
-      background: none; border: none; padding: 5px; cursor: pointer;
-      color: var(--text-faint); border-radius: var(--radius-sm);
-      align-items: center; justify-content: center;
-      transition: color 0.15s, background 0.15s;
-    }
-    #tagSettingsBtn:hover { color: var(--text-muted); background: var(--surface); }
-    #tagSettingsBtn.visible { display: flex; }
+  background: none; border: none; padding: 4px; cursor: pointer;
+  color: var(--text-faint); border-radius: var(--radius-sm);
+  display: none;
+  align-items: center; justify-content: center;
+  transition: color 0.15s, background 0.15s;
+}
+#tagSettingsBtn:hover { color: var(--text-muted); background: var(--surface); }
+#tagSettingsBtn.visible { display: flex; }
+
+#settingsBtn {
+  background: none; border: none; padding: 5px; cursor: pointer;
+  color: var(--text-faint); border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  transition: color 0.15s, background 0.15s;
+}
+#settingsBtn:hover { color: var(--text-muted); background: var(--surface); }
  
     /* ── Favorite star on grid cards ─────────────────────────── */
     .image-card .fav-star {
@@ -577,6 +585,57 @@
 }
 
 .otp-digit:focus { border-color: var(--text-faint); }
+
+/* ── Settings modal ──────────────────────────────────────────── */
+#settings-modal {
+  background: var(--bg); border-radius: var(--radius);
+  width: 400px; max-width: calc(100vw - 48px);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.22);
+  display: flex; flex-direction: column; overflow: hidden;
+  transform: translateY(12px) scale(0.97); opacity: 0;
+  transition: transform 0.35s var(--ease-out), opacity 0.28s var(--ease-out);
+}
+#settings-backdrop.open #settings-modal { transform: translateY(0) scale(1); opacity: 1; }
+#settings-header {
+  padding: 20px 24px 16px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+#settings-title { font-size: 17px; font-weight: 500; color: var(--text); }
+#settings-close {
+  background: none; border: none; padding: 4px; cursor: pointer;
+  color: var(--text-faint); border-radius: 4px;
+  transition: color 0.12s, background 0.12s;
+}
+#settings-close:hover { color: var(--text); background: var(--surface); }
+#settings-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 24px; }
+.settings-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.settings-label { font-size: 15px; color: var(--text-muted); flex-shrink: 0; }
+.settings-slider-wrap { display: flex; align-items: center; gap: 10px; flex: 1; justify-content: flex-end; }
+.settings-slider-wrap input[type=range] { width: 120px; accent-color: var(--dark); cursor: pointer; }
+.settings-slider-wrap span { font-size: 13px; color: var(--text-faint); min-width: 36px; text-align: right; }
+.settings-mode-btns { display: flex; gap: 6px; }
+.mode-btn {
+  padding: 6px 14px; border-radius: var(--radius-sm); font-size: 13px;
+  font-family: var(--font); font-weight: 500; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text-muted);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.mode-btn:hover { background: var(--surface2); }
+.mode-btn.active { background: var(--dark); border-color: var(--dark); color: var(--bg); }
+
+/* ── Dark mode ───────────────────────────────────────────────── */
+body.dark {
+  --bg:         #1a1917;
+  --surface:    #232220;
+  --surface2:   #2a2927;
+  --border:     #38362f;
+  --text:       rgb(235, 230, 220);
+  --text-muted: rgba(235, 230, 220, 0.75);
+  --text-faint: rgba(235, 230, 220, 0.38);
+  --dark:       rgb(235, 230, 220);
+}
+
 </style>
 </head>
 <body>
@@ -587,7 +646,7 @@
     <!-- Step 1: Email -->
     <div id="auth-step1">
       <h2>Sign in to Forage</h2>
-      <p>Enter your email and we'll send you a 6-digit code.</p>
+      <p>Enter your email and we'll send you an 8-digit code.</p>
       <input class="auth-input" type="email" id="auth-email" placeholder="you@example.com">
       <div class="auth-error" id="auth-error-1"></div>
       <button class="auth-btn" id="auth-send-btn">Continue</button>
@@ -628,7 +687,7 @@
 
 <nav id="nav">
   <div id="nav-left">
-    <img id="logo" src="/assets/f-icon.png"/>
+    <img id="logo" src="https://github.com/Tideworks-Studio/forage/blob/main/assets/f_icon.png"/>
     <span class="sep">/</span>
     <span class="active-tag-badge">
       <span id="navDot" style="display:none"></span>
@@ -636,9 +695,10 @@
     </span>
   </div>
   <div id="nav-right">
-  <button id="tagSettingsBtn" title="Tag settings">
+  <button id="settingsBtn" title="Settings">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
   </svg>
 </button>
   <button id="uploadBtn">Upload Photo</button>
@@ -665,12 +725,20 @@
       <div id="tagList"></div>
     </div>
   </aside>
- 
-  <div id="main">
-    <div id="collection-header">
-      <h1 id="collection-title">All</h1>
-      <p id="collection-desc"></p>
-    </div>
+
+ <div id="main">
+<div id="collection-header">
+  <div style="display:flex; align-items:center; gap:10px;">
+    <h1 id="collection-title">All</h1>
+    <button id="tagSettingsBtn" title="Edit tag">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+    </button>
+  </div>
+  <p id="collection-desc"></p>
+</div>
     <div id="grid-area">
       <div id="empty-state">
         <span>Nothing here yet</span>
@@ -786,6 +854,40 @@
   </div>
 </div>
  
+<!-- Settings modal -->
+<div id="settings-backdrop" class="overlay-backdrop">
+  <div id="settings-modal">
+    <div id="settings-header">
+      <span id="settings-title">Settings</span>
+      <button id="settings-close">✕</button>
+    </div>
+    <div id="settings-body">
+      <div class="settings-row">
+        <label class="settings-label">Columns</label>
+        <div class="settings-slider-wrap">
+          <input type="range" id="col-slider" min="1" max="6" step="1" value="4">
+          <span id="col-value">4</span>
+        </div>
+      </div>
+      <div class="settings-row">
+        <label class="settings-label">UI Scale</label>
+        <div class="settings-slider-wrap">
+          <input type="range" id="scale-slider" min="80" max="120" step="5" value="100">
+          <span id="scale-value">100%</span>
+        </div>
+      </div>
+      <div class="settings-row">
+        <label class="settings-label">Color mode</label>
+        <div class="settings-mode-btns">
+          <button class="mode-btn" data-mode="light">Light</button>
+          <button class="mode-btn" data-mode="dark">Dark</button>
+          <button class="mode-btn" data-mode="system">System</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div id="toast"></div>
  
@@ -1335,7 +1437,7 @@ document.getElementById('signOutBtn').addEventListener('click', signOut);
       div.style.animationDelay = `${Math.min(i * 25, 180)}ms`;
       div.innerHTML = `
         <img src="${img.thumbnail || img.url}" alt="" loading="lazy">
-        <button class="fav-star ${img.favorited ? 'active' : ''}" data-id="${img.id}" title="${img.favorited ? 'Remove from favorites' : 'Add to favorites'}">
+        <button class="fav-star ${img.favorited === true ? 'active' : ''}" data-id="${img.id}" title="${img.favorited ? 'Remove from favorites' : 'Add to favorites'}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
           </svg>
@@ -1366,6 +1468,7 @@ document.getElementById('signOutBtn').addEventListener('click', signOut);
     detailImg.style.opacity = '0';
     detailImg.src = img.url || img.thumbnail;
     detailImg.onload = () => { detailImg.style.opacity = '1'; };
+   
  
     // source
     detailSource.innerHTML = '';
@@ -1396,7 +1499,7 @@ document.getElementById('signOutBtn').addEventListener('click', signOut);
     }
  
     // favorite button
-    const isFav = !!img.favorited;
+    const isFav = !!img.favorited === true;
     detailFavBtn.classList.toggle('active', isFav);
     detailFavLabel.textContent = isFav ? 'Remove from favorites' : 'Add to favorites';
  
@@ -1534,7 +1637,7 @@ document.getElementById('signOutBtn').addEventListener('click', signOut);
   });
  
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeDetail(); closeUpload(); closeTagMgmt(); }
+    if (e.key === 'Escape') { closeDetail(); closeUpload(); closeTagMgmt(); closeSettings(); }
   });
  
   // ── Favorite button in detail modal ──────────────────────────
@@ -1680,6 +1783,75 @@ document.getElementById('signOutBtn').addEventListener('click', signOut);
  
   window.addEventListener('DOMContentLoaded', checkSession);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+// ── Settings ───────────────────────────────────────────────
+const settingsBackdrop = document.getElementById('settings-backdrop');
+const settingsClose    = document.getElementById('settings-close');
+const colSlider        = document.getElementById('col-slider');
+const colValue         = document.getElementById('col-value');
+const scaleSlider      = document.getElementById('scale-slider');
+const scaleValue       = document.getElementById('scale-value');
+const modeBtns         = document.querySelectorAll('.mode-btn');
+
+function openSettings() { settingsBackdrop.classList.add('open'); }
+function closeSettings() { settingsBackdrop.classList.remove('open'); }
+
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+settingsClose.addEventListener('click', closeSettings);
+settingsBackdrop.addEventListener('click', e => { if (e.target === settingsBackdrop) closeSettings(); });
+
+// load saved settings
+const savedCols  = localStorage.getItem('forage_columns') || '4';
+const savedScale = localStorage.getItem('forage_scale')   || '100';
+const savedMode  = localStorage.getItem('forage_mode')    || 'system';
+
+function applyColumns(n) {
+  document.getElementById('grid').style.columns = n;
+  colSlider.value = n;
+  colValue.textContent = n;
+}
+function applyScale(n) {
+  document.documentElement.style.fontSize = (n / 100) * 16 + 'px';
+  scaleSlider.value = n;
+  scaleValue.textContent = n + '%';
+}
+function applyMode(mode) {
+  modeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  if (mode === 'dark') {
+    document.body.classList.add('dark');
+  } else if (mode === 'light') {
+    document.body.classList.remove('dark');
+  } else {
+    // system
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.body.classList.toggle('dark', prefersDark);
+  }
+}
+
+applyColumns(savedCols);
+applyScale(savedScale);
+applyMode(savedMode);
+
+colSlider.addEventListener('input', () => {
+  applyColumns(colSlider.value);
+  localStorage.setItem('forage_columns', colSlider.value);
+});
+scaleSlider.addEventListener('input', () => {
+  applyScale(scaleSlider.value);
+  localStorage.setItem('forage_scale', scaleSlider.value);
+});
+modeBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    applyMode(btn.dataset.mode);
+    localStorage.setItem('forage_mode', btn.dataset.mode);
+  });
+});
+
+// listen for system preference changes when in system mode
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (localStorage.getItem('forage_mode') === 'system') applyMode('system');
+});
+
 </script>
 
 </body>
