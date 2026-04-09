@@ -10,8 +10,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Rethink+Sans:ital,wght@0,400;0,500;0,700;1,400;1,700&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
 
-  <!-- Default favicon (fallback for unsupported browsers) -->
-  <link rel="icon" href="assets/light_favicon.png" type="image/x-icon">
   
   <!-- Light mode favicon -->
   <link rel="icon" href="assets/light_favicon.png" type="image/x-icon" media="(prefers-color-scheme: light)">
@@ -53,7 +51,7 @@
       padding: 0 24px; height: var(--nav-h);
     }
     #nav-left { display: flex; align-items: center; gap: 12px; font-size: 15px; color: var(--text-muted); }
-    #logo { height: 28px; object-fit: contain; display: block; mix-blend-mode: multiply; }
+    #logo { height: 28px; object-fit: contain; display: block; }
     #nav-left .sep { color: var(--text-faint); }
     .active-tag-badge { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; color: var(--text-muted); }
     #navDot { width: 8px; height: 8px; border-radius: 50%; background: #dfaa40; flex-shrink: 0; transition: background 0.3s var(--ease-out); }
@@ -634,6 +632,7 @@ body.dark {
   --text-muted: rgba(235, 230, 220, 0.75);
   --text-faint: rgba(235, 230, 220, 0.38);
   --dark:       rgb(235, 230, 220);
+
 }
 
 </style>
@@ -865,7 +864,7 @@ body.dark {
       <div class="settings-row">
         <label class="settings-label">Columns</label>
         <div class="settings-slider-wrap">
-          <input type="range" id="col-slider" min="1" max="6" step="1" value="4">
+          <input type="range" id="col-slider" min="2" max="6" step="1" value="4">
           <span id="col-value">4</span>
         </div>
       </div>
@@ -1499,7 +1498,7 @@ document.getElementById('signOutBtn').addEventListener('click', signOut);
     }
  
     // favorite button
-    const isFav = !!img.favorited === true;
+    const isFav = img.favorited === true;
     detailFavBtn.classList.toggle('active', isFav);
     detailFavLabel.textContent = isFav ? 'Remove from favorites' : 'Add to favorites';
  
@@ -1817,15 +1816,22 @@ function applyScale(n) {
 }
 function applyMode(mode) {
   modeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  let isDark;
   if (mode === 'dark') {
     document.body.classList.add('dark');
+    isDark = true;
   } else if (mode === 'light') {
     document.body.classList.remove('dark');
+    isDark = false;
   } else {
-    // system
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    document.body.classList.toggle('dark', prefersDark);
+    isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.body.classList.toggle('dark', isDark);
   }
+  // swap logo
+  const logo = document.getElementById('logo');
+  logo.src = isDark
+    ? 'https://github.com/Tideworks-Studio/forage/blob/main/assets/wreath_dark.png?raw=true'
+    : 'https://github.com/Tideworks-Studio/forage/blob/main/assets/wreath-logo.png?raw=true';
 }
 
 applyColumns(savedCols);
