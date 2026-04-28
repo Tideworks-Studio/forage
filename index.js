@@ -123,6 +123,7 @@ function initUserSupabase(url, key) {
   authBackdrop.style.display = 'none';
   loadImages();
 }
+
 async function checkSession() {
   const { data: { session } } = await authSupabase.auth.getSession();
   if (session) { await loadUserCredentials(); } else { goToStep(1); }
@@ -181,13 +182,13 @@ const tagSaveBtn      = document.getElementById('tag-save-btn');
 const tagDeleteBtn    = document.getElementById('tag-delete-btn');
 const tagMgmtClose    = document.getElementById('tag-mgmt-close');
 const detailBackdrop  = document.getElementById('detail-backdrop');
-const detailImg       = document.getElementById('detail-img');
 const detailSource    = document.getElementById('detail-source');
 const detailDate      = document.getElementById('detail-date');
-const detailNotes     = document.getElementById('detail-notes');
 const detailTags      = document.getElementById('detail-tags');
 const detailDownload  = document.getElementById('detail-download');
 const detailDelete    = document.getElementById('detail-delete');
+
+const isMobile = () => window.innerWidth <= 768;
 
 let imagesData    = [];
 let activeTag     = 'all';
@@ -197,6 +198,7 @@ let selectedTags  = new Set();
 let activeImageId = null;
 let selectMode    = false;
 let selectedIds   = new Set();
+let searchQuery = '';
 
 // ── Tag metadata (Supabase-backed) ─────────────────────────
 let tagsCache = []; // { id, name, color, parent, sort_order }
@@ -238,6 +240,39 @@ async function renameTagMeta(oldName, newName) {
   }
   existing.name = newName;
 }
+
+const searchBtn   = document.getElementById('searchBtn');
+const searchInput = document.getElementById('searchInput');
+
+searchBtn.addEventListener('click', () => {
+  const isActive = searchInput.classList.contains('visible');
+  if (isActive) {
+    searchInput.classList.remove('visible');
+    searchBtn.classList.remove('active');
+    searchQuery = '';
+    searchInput.value = '';
+    renderGrid();
+  } else {
+    searchInput.classList.add('visible');
+    searchBtn.classList.add('active');
+    searchInput.focus();
+  }
+});
+
+let searchDebounce = null;
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchDebounce);
+  const val = searchInput.value.trim().toLowerCase();
+  if (val !== searchQuery) showSkeletons();
+  searchDebounce = setTimeout(() => {
+    searchQuery = val;
+    renderGrid();
+  }, 600);
+});
+
+searchInput.addEventListener('keydown', e => {
+  if (e.key === 'Escape') searchBtn.click();
+});
 
 // Local color map for fast rendering (populated from tagsCache)
 const tagColorMap = {};
@@ -282,6 +317,29 @@ function loadImgFromURL(url) {
   });
 }
 
+function captureVideoThumbnail(file) {
+  return new Promise((res, rej) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+    const url = URL.createObjectURL(file);
+    video.src = url;
+    video.addEventListener('loadeddata', () => {
+      video.currentTime = 0.5;
+    });
+    video.addEventListener('seeked', () => {
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.min(video.videoWidth, 600);
+      canvas.height = Math.round(video.videoHeight * (canvas.width / video.videoWidth));
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      res(canvas.toDataURL('image/webp', 0.85));
+    });
+    video.addEventListener('error', rej);
+  });
+}
+
 // ── Upload modal ───────────────────────────────────────────
 function openUpload() { uploadBackdrop.classList.add('open'); showStep1(); }
 function closeUpload() { uploadBackdrop.classList.remove('open'); setTimeout(resetModal, 320); }
@@ -305,7 +363,7 @@ function showStep2(displaySrc) {
 function renderTagPills() {
   tagPillsEl.innerHTML = '';
   const allTags = new Set();
-  imagesData.forEach(img => img.tags.forEach(t => allTags.add(t)));
+  imagesData.forEach(img => img.tags.forEach(t => { if (t !== 'Unlabeled') allTags.add(t); }));
   allTags.forEach(tag => {
     const color = colorFor(tag);
     const pill = document.createElement('div');
@@ -344,13 +402,19 @@ dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover
 dropZone.addEventListener('drop', async e => {
   e.preventDefault(); dropZone.classList.remove('dragover');
   const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) await handleFile(file);
+  if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) await handleFile(file);
 });
 fileInput.addEventListener('change', async () => { if (fileInput.files[0]) await handleFile(fileInput.files[0]); });
+
 async function handleFile(file) {
   pendingFile = file; pendingIsURL = false;
-  const img = await loadImgFromFile(file);
-  showStep2(imgToDataURL(img));
+  if (file.type.startsWith('video/')) {
+    const thumbnail = await captureVideoThumbnail(file);
+    showStep2(thumbnail);
+  } else {
+    const img = await loadImgFromFile(file);
+    showStep2(imgToDataURL(img));
+  }
 }
 
 pasteLinkBtn.addEventListener('click', () => { urlField.classList.add('visible'); urlField.focus(); });
@@ -368,8 +432,7 @@ saveBtn.addEventListener('click', async () => {
   const tags = (() => {
     const liveInput = document.getElementById('new-tag-input');
     if (liveInput && liveInput.value.trim()) selectedTags.add(resolveTagName(liveInput.value.trim()));
-    return selectedTags.size > 0 ? [...selectedTags].map(resolveTagName) : ['Unlabeled'];
-  })();
+    return [...selectedTags].map(resolveTagName);  })();
   const notes = notesField.value.trim();
   try {
     let thumbnail, url, source_url = '';
@@ -377,7 +440,8 @@ saveBtn.addEventListener('click', async () => {
       url = pendingFile; source_url = pendingFile;
       const img = await loadImgFromURL(url);
       thumbnail = imgToDataURL(img);
-      const { error } = await supabase.from('images').insert([{ url, thumbnail, source_url, tags, notes }]);
+      const { error } = await supabase.from('images').insert([{ url, thumbnail, source_url, tags, notes, media_type: 'image' }
+]);
       if (error) throw new Error(`DB insert failed: ${error.message}`);
       for (const t of tags) await upsertTag(t, { color: null });
     } else {
@@ -387,8 +451,11 @@ saveBtn.addEventListener('click', async () => {
       if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
       const { data: publicUrlData } = supabase.storage.from('images').getPublicUrl(fileName);
       url = publicUrlData.publicUrl;
-      thumbnail = imgToDataURL(await loadImgFromFile(file));
-      const { error: insertError } = await supabase.from('images').insert([{ url, thumbnail, source_url, tags, notes }]);
+      thumbnail = file.type.startsWith('video/')
+        ? await captureVideoThumbnail(file)
+        : imgToDataURL(await loadImgFromFile(file));      const { error: insertError } = await supabase.from('images').insert([{ url, thumbnail, source_url, tags, notes, media_type: file.type.startsWith('video/') ? 'video' : 'image' }
+
+]);
       if (insertError) throw new Error(`DB insert failed: ${insertError.message}`);
       for (const t of tags) await upsertTag(t, { color: null });
     }
@@ -401,8 +468,32 @@ saveBtn.addEventListener('click', async () => {
   saveBtn.disabled = false; saveBtn.textContent = 'Upload';
 });
 
+function showSkeletons() {
+  // Grid skeletons
+  grid.innerHTML = '';
+  emptyState.classList.remove('visible');
+  const heights = [180, 240, 160, 210, 195, 170, 230, 155];
+  for (let i = 0; i < 8; i++) {
+    const div = document.createElement('div');
+    div.className = 'skeleton-card';
+    div.innerHTML = `<div class="skeleton skeleton-img" style="height:${heights[i % heights.length]}px"></div>`;
+    grid.appendChild(div);
+  }
+
+  // Sidebar tag skeletons
+  tagList.innerHTML = '';
+  const tagWidths = ['60%', '45%', '75%', '50%', '65%'];
+  for (let i = 0; i < 5; i++) {
+    const div = document.createElement('div');
+    div.className = 'skeleton skeleton-tag';
+    div.style.width = tagWidths[i];
+    tagList.appendChild(div);
+  }
+}
+
 // ── Load / render ──────────────────────────────────────────
 async function loadImages() {
+  showSkeletons();
   await loadTags();
   const { data, error } = await supabase.from('images').select('*').order('created_at', { ascending: false });
   if (error) return console.error(error);
@@ -597,12 +688,13 @@ function setTag(tag, color) {
   quickAll.classList.toggle('active', tag === 'all');
   quickFav.classList.toggle('active', tag === 'favorites');
   tagSettingsBtn.classList.toggle('visible', tag !== 'all' && tag !== 'favorites');
+  searchQuery = ''; searchInput.value = ''; searchInput.classList.remove('visible'); searchBtn.classList.remove('active');
   renderGrid();
 }
 
 function renderGrid() {
   grid.innerHTML = '';
-  const filtered = activeTag === 'all'
+  const tagFiltered = activeTag === 'all'
     ? imagesData
     : activeTag === 'favorites'
     ? imagesData.filter(img => img.favorited)
@@ -611,6 +703,9 @@ function renderGrid() {
         const allActive = [activeTag, ...childNames];
         return imagesData.filter(img => img.tags.some(t => allActive.includes(t)));
       })();
+  const filtered = searchQuery
+    ? tagFiltered.filter(img => (img.notes || '').toLowerCase().includes(searchQuery))
+    : tagFiltered;
   emptyState.classList.toggle('visible', filtered.length === 0);
   filtered.forEach((img, i) => {
     const div = document.createElement('div');
@@ -623,6 +718,7 @@ function renderGrid() {
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
         </svg>
       </button>
+      ${img.media_type === 'video' ? '<div class="video-badge">▶ VIDEO</div>' : ''}
       <div class="select-check"></div>`;
     div.querySelector('.fav-star').addEventListener('click', async e => {
       e.stopPropagation();
@@ -635,10 +731,23 @@ function renderGrid() {
       star.title = newFav ? 'Remove from favorites' : 'Add to favorites';
       if (activeTag === 'favorites') renderGrid();
     });
-    div.addEventListener('click', () => {
-      if (selectMode) { toggleCardSelected(div, img.id); return; }
-      openDetail(img);
-    });
+    let pressTimer = null;
+
+div.addEventListener('pointerdown', () => {
+  if (!isMobile()) return;
+  pressTimer = setTimeout(() => {
+    if (!selectMode) enterSelectMode();
+    toggleCardSelected(div, img.id);
+  }, 500);
+});
+
+div.addEventListener('pointerup', () => clearTimeout(pressTimer));
+div.addEventListener('pointercancel', () => clearTimeout(pressTimer));
+
+div.addEventListener('click', () => {
+  if (selectMode) { toggleCardSelected(div, img.id); return; }
+  openDetail(img);
+});
     grid.appendChild(div);
   });
 }
@@ -684,9 +793,27 @@ function updateBulkBar() {
 // ── Detail modal ───────────────────────────────────────────
 function openDetail(img) {
   activeImageId = img.id;
-  detailImg.style.opacity = '0';
-  detailImg.src = img.url || img.thumbnail;
-  detailImg.onload = () => { detailImg.style.opacity = '1'; };
+  const detailImgCol = document.getElementById('detail-img-col');
+detailImgCol.innerHTML = ''; // clear previous
+if (img.media_type === 'video') {
+  const vid = document.createElement('video');
+  vid.src = img.url;
+  vid.controls = true;
+  vid.autoplay = false;
+  vid.style.opacity = '0';
+  vid.style.transition = 'opacity 0.35s';
+  vid.onloadeddata = () => { vid.style.opacity = '1'; };
+  detailImgCol.appendChild(vid);
+} else {
+  const im = document.createElement('img');
+  im.id = 'detail-img';
+  im.alt = '';
+  im.style.opacity = '0';
+  im.style.transition = 'opacity 0.35s var(--ease-out)';
+  im.onload = () => { im.style.opacity = '1'; };
+  im.src = img.url || img.thumbnail;
+  detailImgCol.appendChild(im);
+}
 
   detailSource.innerHTML = '';
   if (img.source_url) {
@@ -737,23 +864,33 @@ function openDetail(img) {
   renderDetailTags(img.tags || []);
   detailDownload.dataset.src = img.url || img.thumbnail;
   detailDownload.dataset.filename = `forage-${img.id || Date.now()}.jpg`;
+  if (isMobile()) {
+  const existing = document.getElementById('detail-mobile-close');
+  if (existing) existing.remove();
+  const closeBtn = document.createElement('button');
+  closeBtn.id = 'detail-mobile-close';
+  closeBtn.innerHTML = `← Back`;
+  closeBtn.addEventListener('click', closeDetail);
+  document.getElementById('detail-info-col').prepend(closeBtn);
+}
   detailBackdrop.classList.add('open');
 }
 
 function renderDetailTags(tags) {
   detailTags.innerHTML = '';
-  tags.forEach(tag => {
+  tags.filter(t => t !== 'Unlabeled').forEach(tag => {
     const color = colorFor(tag);
     const el = document.createElement('span');
     el.className = 'detail-tag';
     el.innerHTML = `<span class="dot" style="background:${color}"></span>${tag}<span class="remove-tag" title="Remove tag">✕</span>`;
     el.querySelector('.remove-tag').addEventListener('click', async () => {
       const newTags = tags.filter(t => t !== tag);
-      const { error } = await supabase.from('images').update({ tags: newTags }).eq('id', activeImageId);
+      const finalTags = newTags.length === 0 ? ['Unlabeled'] : newTags;
+      const { error } = await supabase.from('images').update({ tags: finalTags }).eq('id', activeImageId);
       if (error) { showToast('Could not remove tag', 'error'); return; }
       const img = imagesData.find(i => i.id === activeImageId);
-      if (img) img.tags = newTags;
-      renderDetailTags(newTags); updateSidebar();
+      if (img) img.tags = finalTags;
+      renderDetailTags(finalTags); updateSidebar();
     });
     detailTags.appendChild(el);
   });
@@ -778,7 +915,10 @@ function renderDetailTags(tags) {
 function closeDetail() {
   detailBackdrop.classList.remove('open');
   detailDelete.disabled = false; detailDelete.textContent = '✕ Delete image';
-  setTimeout(() => { detailImg.src = ''; activeImageId = null; }, 380);
+  setTimeout(() => {
+    document.getElementById('detail-img-col').innerHTML = '<img id="detail-img" src="" alt="">';
+    activeImageId = null;
+  }, 380);
 }
 detailBackdrop.addEventListener('click', e => { if (e.target === detailBackdrop) closeDetail(); });
 
@@ -831,7 +971,10 @@ detailDelete.addEventListener('click', async () => {
 });
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeDetail(); closeUpload(); closeTagMgmt(); closeSettings(); exitSelectMode(); }
+  if (e.key === 'Escape') {
+    closeDetail(); closeUpload(); closeTagMgmt(); closeSettings();
+    exitSelectMode(); closeTagsSheet(); closeSearchSheet();
+  }
 });
 
 detailFavBtn.addEventListener('click', async () => {
@@ -875,7 +1018,7 @@ function openTagMgmt(tag) {
   const childNames = tagsCache.filter(t => t.parent === tag).map(t => t.name);
   parentSelect.innerHTML = '<option value="">— no parent —</option>';
   tagsCache
-    .filter(t => t.name !== tag && !childNames.includes(t.name))
+    .filter(t => t.name !== tag && !childNames.includes(t.name) && t.name !== 'Unlabeled')
     .forEach(t => {
       const opt = document.createElement('option');
       opt.value = t.name; opt.textContent = t.name;
@@ -886,7 +1029,7 @@ function openTagMgmt(tag) {
   // Merge select
   tagMergeSelect.innerHTML = '<option value="">— keep as separate tag —</option>';
   tagsCache
-    .filter(t => t.name !== tag)
+    .filter(t => t.name !== tag && t.name !== 'Unlabeled')
     .forEach(t => {
       const opt = document.createElement('option');
       opt.value = t.name; opt.textContent = t.name;
@@ -1018,7 +1161,7 @@ document.getElementById('bulk-tag-plural').textContent = count === 1 ? '' : 's';
   const tagsToRemove = new Set();
 
   // Add pills — all known tags
-  tagsCache.forEach(t => {
+  tagsCache.filter(t => t.name !== 'Unlabeled').forEach(t => {
     const color = colorFor(t.name);
     const pill = document.createElement('div');
     pill.className = 'tag-pill';
@@ -1056,6 +1199,7 @@ document.getElementById('bulk-tag-plural').textContent = count === 1 ? '' : 's';
   const selectedImages = imagesData.filter(img => selectedIds.has(img.id));
   const presentTags = new Set(selectedImages.flatMap(img => img.tags));
   presentTags.forEach(name => {
+    if (name === 'Unlabeled') return;
     const color = colorFor(name);
     const pill = document.createElement('div');
     pill.className = 'tag-pill';
@@ -1177,6 +1321,24 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () 
   if (localStorage.getItem('forage_mode') === 'system') applyMode('system');
 });
 
+const tagsSheet = document.getElementById('tags-sheet');
+let tagsStartY = null;
+tagsSheet.addEventListener('touchstart', e => { tagsStartY = e.touches[0].clientY; }, { passive: true });
+tagsSheet.addEventListener('touchend', e => {
+  if (tagsStartY === null) return;
+  if (e.changedTouches[0].clientY - tagsStartY > 60) closeTagsSheet();
+  tagsStartY = null;
+}, { passive: true });
+
+const searchSheet = document.getElementById('search-sheet');
+let searchStartY = null;
+searchSheet.addEventListener('touchstart', e => { searchStartY = e.touches[0].clientY; }, { passive: true });
+searchSheet.addEventListener('touchend', e => {
+  if (searchStartY === null) return;
+  if (e.changedTouches[0].clientY - searchStartY > 60) closeSearchSheet();
+  searchStartY = null;
+}, { passive: true });
+
 // Tag Normalization //
 function normalizeTag(name) {
   return name.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
@@ -1187,3 +1349,128 @@ function resolveTagName(input) {
   const existing = tagsCache.find(t => normalizeTag(t.name) === normalizedInput);
   return existing ? existing.name : input;
 }
+
+// ── Mobile nav ─────────────────────────────────────────────
+const mobileNavBtns = document.querySelectorAll('.mobile-nav-btn');
+
+function setMobileActive(id) {
+  mobileNavBtns.forEach(b => b.classList.toggle('active', b.id === id));
+}
+
+document.getElementById('mob-home').addEventListener('click', () => {
+  setTag('all', '');
+  setMobileActive('mob-home');
+});
+
+document.getElementById('mob-favorites').addEventListener('click', () => {
+  setTag('favorites', '');
+  setMobileActive('mob-favorites');
+});
+
+document.getElementById('mob-upload').addEventListener('click', openUpload);
+
+document.getElementById('mob-tags').addEventListener('click', () => {
+  openTagsSheet();
+  setMobileActive('mob-tags');
+});
+
+document.getElementById('mob-search').addEventListener('click', () => {
+  openSearchSheet();
+  setMobileActive('mob-search');
+});
+
+document.getElementById('mob-settings').addEventListener('click', openSettings);
+
+// ── Tags sheet ─────────────────────────────────────────────
+const tagsSheetBackdrop = document.getElementById('tags-sheet-backdrop');
+const tagsSheetList = document.getElementById('tags-sheet-list');
+
+function openTagsSheet() {
+  renderTagsSheet();
+  tagsSheetBackdrop.classList.add('open');
+}
+
+function closeTagsSheet() {
+  tagsSheetBackdrop.classList.remove('open');
+  // Reset mobile nav active state back to current tag
+  if (activeTag === 'favorites') setMobileActive('mob-favorites');
+  else setMobileActive('mob-home');
+}
+
+tagsSheetBackdrop.addEventListener('click', e => {
+  if (e.target === tagsSheetBackdrop) closeTagsSheet();
+});
+
+function renderTagsSheet() {
+  tagsSheetList.innerHTML = '';
+
+  // All Images row
+  const allRow = document.createElement('div');
+  allRow.className = 'tags-sheet-item' + (activeTag === 'all' ? ' active' : '');
+  allRow.innerHTML = `<div class="tags-sheet-item-left"><span>All Images</span></div><span class="tags-sheet-item-count">${imagesData.length}</span>`;
+  allRow.addEventListener('click', () => { setTag('all', ''); closeTagsSheet(); setMobileActive('mob-home'); });
+  tagsSheetList.appendChild(allRow);
+
+  // Favorites row
+  const favRow = document.createElement('div');
+  const favCount = imagesData.filter(i => i.favorited).length;
+  favRow.className = 'tags-sheet-item' + (activeTag === 'favorites' ? ' active' : '');
+  favRow.innerHTML = `<div class="tags-sheet-item-left"><span>Favorites</span></div><span class="tags-sheet-item-count">${favCount}</span>`;
+  favRow.addEventListener('click', () => { setTag('favorites', ''); closeTagsSheet(); setMobileActive('mob-favorites'); });
+  tagsSheetList.appendChild(favRow);
+
+  // Tag rows
+  tagsCache.forEach(tag => {
+    const color = colorFor(tag.name);
+    const count = imagesData.filter(img => img.tags.includes(tag.name)).length;
+    const row = document.createElement('div');
+    row.className = 'tags-sheet-item' + (activeTag === tag.name ? ' active' : '');
+    row.innerHTML = `
+      <div class="tags-sheet-item-left">
+        <span class="dot" style="background:${color}"></span>
+        <span>${tag.name}</span>
+      </div>
+      <span class="tags-sheet-item-count">${count}</span>`;
+    row.addEventListener('click', () => { setTag(tag.name, color); closeTagsSheet(); setMobileActive('mob-tags'); });
+    tagsSheetList.appendChild(row);
+  });
+}
+
+// ── Search sheet ────────────────────────────────────────────
+const searchSheetBackdrop = document.getElementById('search-sheet-backdrop');
+const searchSheetInput = document.getElementById('search-sheet-input');
+
+function openSearchSheet() {
+  searchSheetBackdrop.classList.add('open');
+  setTimeout(() => searchSheetInput.focus(), 300);
+}
+
+function closeSearchSheet() {
+  searchSheetBackdrop.classList.remove('open');
+  searchSheetInput.blur();
+  if (activeTag === 'favorites') setMobileActive('mob-favorites');
+  else setMobileActive('mob-home');
+}
+
+searchSheetBackdrop.addEventListener('click', e => {
+  if (e.target === searchSheetBackdrop) closeSearchSheet();
+});
+
+let mobileSearchDebounce = null;
+searchSheetInput.addEventListener('input', () => {
+  clearTimeout(mobileSearchDebounce);
+  mobileSearchDebounce = setTimeout(() => {
+    searchQuery = searchSheetInput.value.trim().toLowerCase();
+    renderGrid();
+    if (searchQuery) closeSearchSheet();
+  }, 600);
+});
+
+searchSheetInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    searchQuery = searchSheetInput.value.trim().toLowerCase();
+    renderGrid();
+    closeSearchSheet();
+  }
+  if (e.key === 'Escape') closeSearchSheet();
+});
