@@ -1,3 +1,4 @@
+import { SELFHOST } from './config.js';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 // ── Auth Supabase ──────────────────────────────────────────
@@ -19,16 +20,27 @@ const authBackBtn  = document.getElementById('auth-back-btn');
 const authSbUrl    = document.getElementById('auth-sb-url');
 const authSbKey    = document.getElementById('auth-sb-key');
 const otpInputs    = [...document.querySelectorAll('.otp-digit')];
+const authStepPick  = document.getElementById('auth-step-pick');
+const authStepLocal = document.getElementById('auth-step-local');
+const authLocalUrl  = document.getElementById('auth-local-url');
+const authLocalKey  = document.getElementById('auth-local-key');
+const authLocalBtn  = document.getElementById('auth-local-save-btn');
 
 function showAuthError(step, msg) {
-  const el = document.getElementById(`auth-error-${step}`);
+  const el = step === 'local'
+    ? document.getElementById('auth-error-local')
+    : document.getElementById(`auth-error-${step}`);
   el.textContent = msg; el.classList.add('visible');
 }
 function clearAuthError(step) {
-  const el = document.getElementById(`auth-error-${step}`);
-  el.textContent = ''; el.classList.remove('visible');
+  const el = step === 'local'
+    ? document.getElementById('auth-error-local')
+    : document.getElementById(`auth-error-${step}`);
+  if (el) { el.textContent = ''; el.classList.remove('visible'); }
 }
 function goToStep(n) {
+  authStepPick.style.display  = n === 'pick'  ? 'flex' : 'none';
+  authStepLocal.style.display = n === 'local' ? 'flex' : 'none';
   authStep1.style.display = n === 1 ? 'flex' : 'none';
   authStep2.style.display = n === 2 ? 'flex' : 'none';
   authStep3.style.display = n === 3 ? 'flex' : 'none';
@@ -81,6 +93,42 @@ authVerifyBtn.addEventListener('click', async () => {
 });
 authBackBtn.addEventListener('click', () => { otpInputs.forEach(i => i.value = ''); goToStep(1); });
 
+// Mode picker
+document.getElementById('pick-email-btn').addEventListener('click', () => {
+  localStorage.setItem('forage_auth_mode', 'email');
+  goToStep(1);
+});
+
+document.getElementById('pick-local-btn').addEventListener('click', () => {
+  localStorage.setItem('forage_auth_mode', 'local');
+  goToStep('local');
+});
+
+document.getElementById('pick-selfhost-btn').addEventListener('click', () => {
+  localStorage.setItem('forage_auth_mode', 'selfhost');
+  goToStep('local'); // same UI — just no email backing
+});
+
+// Local-only login
+authLocalBtn.addEventListener('click', async () => {
+  const url = authLocalUrl.value.trim();
+  const key = authLocalKey.value.trim();
+  if (!url || !key) { showAuthError('local', 'Both fields are required.'); return; }
+  authLocalBtn.disabled = true; authLocalBtn.textContent = 'Connecting…';
+  try {
+    const testClient = createClient(url, key);
+    const { error } = await testClient.from('images').select('id').limit(1);
+    if (error && error.code !== 'PGRST116') throw new Error(error.message);
+  } catch (err) {
+    showAuthError('local', 'Couldn\'t connect — double-check your URL and key.');
+    authLocalBtn.disabled = false; authLocalBtn.textContent = 'Open my library'; return;
+  }
+  localStorage.setItem('forage_sb_url', url);
+  localStorage.setItem('forage_sb_key', key);
+  authLocalBtn.disabled = false; authLocalBtn.textContent = 'Open my library';
+  initUserSupabase(url, key);
+});
+
 async function loadUserCredentials() {
   const cachedUrl = localStorage.getItem('forage_sb_url');
   const cachedKey = localStorage.getItem('forage_sb_key');
@@ -125,18 +173,55 @@ function initUserSupabase(url, key) {
 }
 
 async function checkSession() {
-  const { data: { session } } = await authSupabase.auth.getSession();
-  if (session) { await loadUserCredentials(); } else { goToStep(1); }
+   // Self-hosted hardwire check — bypasses all auth
+  if (SELFHOST.ENABLED && SELFHOST.URL && SELFHOST.KEY) {
+    initUserSupabase(SELFHOST.URL, SELFHOST.KEY);
+    return;
+  }
+  const mode = localStorage.getItem('forage_auth_mode');
+  if (mode === 'local') {
+    const url = localStorage.getItem('forage_sb_url');
+    const key = localStorage.getItem('forage_sb_key');
+    if (url && key) { initUserSupabase(url, key); return; }
+    goToStep('local');
+    return;
+  }
+  if (mode === 'selfhost') {
+    const url = localStorage.getItem('forage_sb_url');
+    const key = localStorage.getItem('forage_sb_key');
+    if (url && key) { initUserSupabase(url, key); return; }
+    goToStep('local');
+    return;
+  }
+  
+  if (mode === 'email') {
+    const { data: { session } } = await authSupabase.auth.getSession();
+    if (session) { await loadUserCredentials(); } else { goToStep(1); }
+    return;
+  }
+  // No mode chosen yet — show picker
+  goToStep('pick');
 }
+
 async function signOut() {
   await authSupabase.auth.signOut();
   localStorage.removeItem('forage_sb_url');
   localStorage.removeItem('forage_sb_key');
+  localStorage.removeItem('forage_auth_mode');
   supabase = null;
   authBackdrop.style.display = 'flex';
-  goToStep(1);
+  goToStep('pick');
 }
 document.getElementById('signOutBtn').addEventListener('click', signOut);
+
+document.getElementById('auth-local-back-btn').addEventListener('click', () => {
+  localStorage.removeItem('forage_auth_mode');
+  goToStep('pick');
+});
+document.getElementById('auth-mode-back-btn').addEventListener('click', () => {
+  localStorage.removeItem('forage_auth_mode');
+  goToStep('pick');
+});
 
 // ── Toast ──────────────────────────────────────────────────
 let toastTimer;
@@ -198,7 +283,12 @@ let selectedTags  = new Set();
 let activeImageId = null;
 let selectMode    = false;
 let selectedIds   = new Set();
-let searchQuery = '';
+let searchQuery   = '';
+
+const PAGE_SIZE   = 25;
+let currentPage   = 0;
+let allFiltered   = [];
+let isLoadingPage = false;
 
 // ── Tag metadata (Supabase-backed) ─────────────────────────
 let tagsCache = []; // { id, name, color, parent, sort_order }
@@ -491,20 +581,22 @@ function showSkeletons() {
   }
 }
 
-// ── Load / render ──────────────────────────────────────────
 async function loadImages() {
   showSkeletons();
   await loadTags();
-  const { data, error } = await supabase.from('images').select('*').order('created_at', { ascending: false });
+  const { data, error } = await supabase
+    .from('images')
+    .select('*')
+    .order('created_at', { ascending: false });
   if (error) return console.error(error);
   imagesData = data;
-  // Ensure any tags on images that aren't in tagsCache yet get a row
   const allImageTags = new Set(imagesData.flatMap(img => img.tags));
   const cachedNames = new Set(tagsCache.map(t => t.name));
   for (const name of allImageTags) {
     if (!cachedNames.has(name)) await upsertTag(name, { color: null });
   }
-  updateSidebar(); renderGrid();
+  updateSidebar();
+  resetAndRenderGrid();
 }
 
 // Collapsed state for parent tags
@@ -691,9 +783,7 @@ function setTag(tag, color) {
   searchQuery = ''; searchInput.value = ''; searchInput.classList.remove('visible'); searchBtn.classList.remove('active');
   renderGrid();
 }
-
-function renderGrid() {
-  grid.innerHTML = '';
+function getFilteredImages() {
   const tagFiltered = activeTag === 'all'
     ? imagesData
     : activeTag === 'favorites'
@@ -703,11 +793,31 @@ function renderGrid() {
         const allActive = [activeTag, ...childNames];
         return imagesData.filter(img => img.tags.some(t => allActive.includes(t)));
       })();
-  const filtered = searchQuery
+  return searchQuery
     ? tagFiltered.filter(img => (img.notes || '').toLowerCase().includes(searchQuery))
     : tagFiltered;
-  emptyState.classList.toggle('visible', filtered.length === 0);
-  filtered.forEach((img, i) => {
+}
+
+function renderGrid() {
+  resetAndRenderGrid();
+}
+
+function resetAndRenderGrid() {
+  grid.innerHTML = '';
+  currentPage = 0;
+  allFiltered = getFilteredImages();
+  emptyState.classList.toggle('visible', allFiltered.length === 0);
+  appendPage();
+}
+
+function appendPage() {
+  if (isLoadingPage) return;
+  const start = currentPage * PAGE_SIZE;
+  const slice = allFiltered.slice(start, start + PAGE_SIZE);
+  if (slice.length === 0) return;
+  isLoadingPage = true;
+  slice.forEach((img, i) => {
+    const globalIdx = start + i;
     const div = document.createElement('div');
     div.className = 'image-card';
     div.style.animationDelay = `${Math.min(i * 25, 180)}ms`;
@@ -729,29 +839,31 @@ function renderGrid() {
       const star = div.querySelector('.fav-star');
       star.classList.toggle('active', newFav);
       star.title = newFav ? 'Remove from favorites' : 'Add to favorites';
-      if (activeTag === 'favorites') renderGrid();
+      if (activeTag === 'favorites') resetAndRenderGrid();
     });
     let pressTimer = null;
-
-div.addEventListener('pointerdown', () => {
-  if (!isMobile()) return;
-  pressTimer = setTimeout(() => {
-    if (!selectMode) enterSelectMode();
-    toggleCardSelected(div, img.id);
-  }, 500);
-});
-
-div.addEventListener('pointerup', () => clearTimeout(pressTimer));
-div.addEventListener('pointercancel', () => clearTimeout(pressTimer));
-
-div.addEventListener('click', () => {
-  if (selectMode) { toggleCardSelected(div, img.id); return; }
-  openDetail(img);
-});
+    div.addEventListener('pointerdown', () => {
+      if (!isMobile()) return;
+      pressTimer = setTimeout(() => {
+        if (!selectMode) enterSelectMode();
+        toggleCardSelected(div, img.id);
+      }, 500);
+    });
+    div.addEventListener('pointerup', () => clearTimeout(pressTimer));
+    div.addEventListener('pointercancel', () => clearTimeout(pressTimer));
+    div.addEventListener('click', () => {
+      if (selectMode) { toggleCardSelected(div, img.id); return; }
+      openDetail(img);
+    });
+    if (selectMode) {
+      div.classList.add('selectable');
+      if (selectedIds.has(img.id)) div.classList.add('selected');
+    }
     grid.appendChild(div);
   });
+  currentPage++;
+  isLoadingPage = false;
 }
-
 /* Select */
 function enterSelectMode() {
   selectMode = true;
@@ -909,7 +1021,6 @@ function renderDetailTags(tags) {
     renderDetailTags(newTags); updateSidebar();
   });
   detailTags.appendChild(input);
-  input.focus();
 }
 
 function closeDetail() {
@@ -988,6 +1099,14 @@ detailFavBtn.addEventListener('click', async () => {
   detailFavBtn.classList.toggle('active', newFav);
   detailFavLabel.textContent = newFav ? 'Remove from favorites' : 'Add to favorites';
   renderGrid();
+});
+
+document.getElementById('detail-fullscreen-btn').addEventListener('click', () => {
+  const col = document.getElementById('detail-img-col');
+  const el = col.querySelector('img, video');
+  if (!el) return;
+  if (el.requestFullscreen) el.requestFullscreen();
+  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
 });
 
 // ── Tag management modal ───────────────────────────────────
@@ -1248,9 +1367,20 @@ uploadBtn.addEventListener('click', openUpload);
 uploadBackdrop.addEventListener('click', e => { if (e.target === uploadBackdrop) closeUpload(); });
 quickAll.addEventListener('click', () => setTag('all', ''));
 quickFav.addEventListener('click', () => setTag('favorites', ''));
+// ── Infinite scroll ────────────────────────────────────────
+const gridArea = document.getElementById('grid-area');
+gridArea.addEventListener('scroll', () => {
+  const { scrollTop, scrollHeight, clientHeight } = gridArea;
+  if (scrollHeight - scrollTop - clientHeight < 300 && !isLoadingPage) {
+    const start = currentPage * PAGE_SIZE;
+    if (start < allFiltered.length) appendPage();
+  }
+});
 window.addEventListener('DOMContentLoaded', checkSession);
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
-
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js')
+  .then(r => console.log('SW registered', r.scope))
+  .catch(e => console.error('SW failed', e));
+  
 // ── Settings ───────────────────────────────────────────────
 const settingsBackdrop = document.getElementById('settings-backdrop');
 const settingsClose    = document.getElementById('settings-close');
