@@ -7,7 +7,7 @@ Forage is a personal visual archive meant for creative inspiration, keeping phot
 
 ## Priorities
 
-- There is not algorithm — what you see is what you get
+- There is no algorithm — what you see is what you get
 - Private by design — user images live in their own database (via a 3-minute Supabase SQL setup)
 - Save from anywhere — save images either through a URL (frontend pulls from it every time) or through an upload (internal storage)
 
