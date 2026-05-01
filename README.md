@@ -1,4 +1,4 @@
-<img width="1920" height="1080" alt="hero" src="<img width="1920" height="1080" alt="hero" src="https://github.com/user-attachments/assets/3c3e6c9f-857e-4b9e-bc18-48b3d95ea3f2" />
+<img width="1920" height="1080" alt="hero" src="https://github.com/user-attachments/assets/3c3e6c9f-857e-4b9e-bc18-48b3d95ea3f2" />
 
 ## Forage — a place for photos that matter
 Forage is a lightweight photo library built on one main principle — we need a place for images to live, not a place for them to die. Most tools are built for discovery, but become less about keeping and remembering things, and more about scrolling.
