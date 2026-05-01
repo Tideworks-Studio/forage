@@ -17,39 +17,72 @@
 
 <div id="auth-backdrop">
   <div id="auth-modal">
-    <div id="auth-step1">
-      <h2>Sign in to Forage</h2>
-      <p>Enter your email and we'll send you an 8-digit code.</p>
-      <input class="auth-input" type="email" id="auth-email" placeholder="you@example.com">
-      <div class="auth-error" id="auth-error-1"></div>
-      <button class="auth-btn" id="auth-send-btn">Continue</button>
-    </div>
-    <div id="auth-step2" style="display:none">
-      <h2>Check your email</h2>
-      <p id="auth-otp-desc">We sent an 8-digit code to <strong></strong>. It expires in 10 minutes.</p>
-      <div class="otp-inputs" id="otp-inputs">
-        <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
-        <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
-        <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
-        <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
-        <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
-        <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
-        <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
-        <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
-      </div>
-      <div class="auth-error" id="auth-error-2"></div>
-      <button class="auth-btn" id="auth-verify-btn">Verify</button>
-      <button class="auth-back" id="auth-back-btn">← Use a different email</button>
-    </div>
-    <div id="auth-step3" style="display:none">
-      <h2>Connect your library</h2>
-      <p>Forage stores your images in your own Supabase project. Paste your project URL and anon key below — you can find these in your Supabase dashboard under Settings → API.</p>
-      <input class="auth-input" type="url" id="auth-sb-url" placeholder="https://yourproject.supabase.co">
-      <input class="auth-input" type="text" id="auth-sb-key" placeholder="your anon/public key">
-      <div class="auth-error" id="auth-error-3"></div>
-      <button class="auth-btn" id="auth-save-btn">Open my library</button>
-    </div>
+
+  <!-- Step: Pick mode -->
+  <div id="auth-step-pick" style="display:none; flex-direction:column; gap:14px;">
+    <h2>Welcome to Forage</h2>
+    <p>How would you like to store your account credentials?</p>
+    <button class="auth-btn" id="pick-email-btn">
+      Sign in with email
+      <span style="display:block; font-size:12px; font-weight:400; opacity:0.6; margin-top:2px;">Easiest — your Supabase details are saved to your account</span>
+    </button>
+    <button class="auth-btn" id="pick-local-btn" style="background:var(--surface); color:var(--text); border:1px solid var(--border);">
+      Local only
+      <span style="display:block; font-size:12px; font-weight:400; opacity:0.6; margin-top:2px;">Most private — your Supabase URL and key stay on this device only</span>
+    </button>
   </div>
+
+  <!-- Step: Local-only credentials -->
+  <div id="auth-step-local" style="display:none; flex-direction:column; gap:14px;">
+    <h2>Connect your library</h2>
+    <p>Paste your Supabase project URL and anon key. These stay on this device only.</p>
+    <input class="auth-input" type="url" id="auth-local-url" placeholder="https://yourproject.supabase.co">
+    <input class="auth-input" type="text" id="auth-local-key" placeholder="your anon/public key">
+    <div class="auth-error" id="auth-error-local"></div>
+    <button class="auth-btn" id="auth-local-save-btn">Open my library</button>
+    <button class="auth-back" id="auth-local-back-btn">← Choose a different mode</button>
+  </div>
+
+  <!-- Step 1: Email -->
+  <div id="auth-step1">
+    <h2>Sign in to Forage</h2>
+    <p>Enter your email and we'll send you an 8-digit code.</p>
+    <input class="auth-input" type="email" id="auth-email" placeholder="you@example.com">
+    <div class="auth-error" id="auth-error-1"></div>
+    <button class="auth-btn" id="auth-send-btn">Continue</button>
+    <button class="auth-back" id="auth-mode-back-btn">← Choose a different mode</button>
+  </div>
+
+  <!-- Step 2: OTP -->
+  <div id="auth-step2" style="display:none">
+    <h2>Check your email</h2>
+    <p id="auth-otp-desc">We sent an 8-digit code to <strong></strong>. It expires in 10 minutes.</p>
+    <div class="otp-inputs" id="otp-inputs">
+      <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+      <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+      <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+      <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+      <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+      <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+      <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+      <input class="otp-digit" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]">
+    </div>
+    <div class="auth-error" id="auth-error-2"></div>
+    <button class="auth-btn" id="auth-verify-btn">Verify</button>
+    <button class="auth-back" id="auth-back-btn">← Use a different email</button>
+  </div>
+
+  <!-- Step 3: Connect Supabase (email-backed) -->
+  <div id="auth-step3" style="display:none">
+    <h2>Connect your library</h2>
+    <p>Forage stores your images in your own Supabase project. Paste your project URL and anon key below — you can find these in your Supabase dashboard under Settings → API.</p>
+    <input class="auth-input" type="url" id="auth-sb-url" placeholder="https://yourproject.supabase.co">
+    <input class="auth-input" type="text" id="auth-sb-key" placeholder="your anon/public key">
+    <div class="auth-error" id="auth-error-3"></div>
+    <button class="auth-btn" id="auth-save-btn">Open my library</button>
+  </div>
+
+</div>
 </div>
 
 <nav id="nav">
@@ -173,6 +206,12 @@
   <div id="detail-modal">
     <div id="detail-img-col">
       <img id="detail-img" src="" alt="">
+      <button id="detail-fullscreen-btn" title="Full screen">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+          <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+        </svg>
+      </button>
     </div>
     <div id="detail-info-col">
       <div id="detail-meta">
